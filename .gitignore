@@ -1,0 +1,77 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+package-lock.json.lock
+
+# Serverless
+.serverless/
+.serverless_plugins/
+serverless-state.json
+
+# Build output
+dist/
+build/
+out/
+lib/
+*.tsbuildinfo
+
+# TypeScript/JS caches
+.cache/
+.next/
+
+# Environment files (keep .env.example)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+.pnpm-debug.log
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Biome / lint caches
+.biome/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+.Trashes
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Localstack / serverless offline / temp
+.localstack/
+.serverless/
+.serverless_plugins/
+
+# Temporary files
+*.tgz
+*.zip
+*.tmp
+tmp/localstack/
+*~
+*.swp
+*.swo
+
+# Misc
+coverage/
+reports/
+
+# Keep lockfiles in repo normally; if you prefer to ignore specific lockfiles uncomment below
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

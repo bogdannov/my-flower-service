@@ -1,0 +1,326 @@
+org: 99lab
+app: app
+service: autowatering-backend
+
+plugins:
+  - serverless-localstack
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-central-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    STAGE: ${self:provider.stage}
+    AWS_REGION: ${self:provider.region}
+    COLLECTIONS_TABLE: ${self:service}-collections-${self:provider.stage}
+    USER_FLOWERS_TABLE: ${self:service}-user-flowers-${self:provider.stage}
+    WATERING_EVENTS_TABLE: ${self:service}-watering-events-${self:provider.stage}
+    SENSOR_READINGS_TABLE: ${self:service}-sensor-readings-${self:provider.stage}
+    DEVICES_TABLE: ${self:service}-devices-${self:provider.stage}
+    PAIRING_CODES_TABLE: ${self:service}-pairing-codes-${self:provider.stage}
+    AUTH0_DOMAIN: ${ssm:/autowatering/${self:provider.stage}/auth0-domain, 'placeholder.auth0.com'}
+    AUTH0_AUDIENCE: ${ssm:/autowatering/${self:provider.stage}/auth0-audience, 'placeholder-audience'}
+
+functions:
+  # ── Health ──
+  health:
+    handler: src/handler/health.handler
+    events:
+      - httpApi:
+          path: /health
+          method: GET
+
+  # ── User Flowers ──
+  createUserFlower:
+    handler: src/handler/user-flowers.createUserFlower
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers
+          method: POST
+          authorizer:
+            name: auth0Authorizer
+
+  listUserFlowers:
+    handler: src/handler/user-flowers.listUserFlowers
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  getUserFlower:
+    handler: src/handler/user-flowers.getUserFlower
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  updateUserFlower:
+    handler: src/handler/user-flowers.updateUserFlower
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}
+          method: PATCH
+          authorizer:
+            name: auth0Authorizer
+
+  deleteUserFlower:
+    handler: src/handler/user-flowers.deleteUserFlower
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}
+          method: DELETE
+          authorizer:
+            name: auth0Authorizer
+
+  # ── Collections ──
+  createCollection:
+    handler: src/handler/collections.createCollection
+    events:
+      - httpApi:
+          path: /api/v1/collections
+          method: POST
+          authorizer:
+            name: auth0Authorizer
+
+  listCollections:
+    handler: src/handler/collections.listCollections
+    events:
+      - httpApi:
+          path: /api/v1/collections
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  getCollection:
+    handler: src/handler/collections.getCollection
+    events:
+      - httpApi:
+          path: /api/v1/collections/{collectionId}
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  updateCollection:
+    handler: src/handler/collections.updateCollection
+    events:
+      - httpApi:
+          path: /api/v1/collections/{collectionId}
+          method: PATCH
+          authorizer:
+            name: auth0Authorizer
+
+  deleteCollection:
+    handler: src/handler/collections.deleteCollection
+    events:
+      - httpApi:
+          path: /api/v1/collections/{collectionId}
+          method: DELETE
+          authorizer:
+            name: auth0Authorizer
+
+  addFlowerToCollection:
+    handler: src/handler/collections.addFlowerToCollection
+    events:
+      - httpApi:
+          path: /api/v1/collections/{collectionId}/flowers/{userFlowerId}
+          method: POST
+          authorizer:
+            name: auth0Authorizer
+
+  removeFlowerFromCollection:
+    handler: src/handler/collections.removeFlowerFromCollection
+    events:
+      - httpApi:
+          path: /api/v1/collections/{collectionId}/flowers/{userFlowerId}
+          method: DELETE
+          authorizer:
+            name: auth0Authorizer
+
+  # ── Watering ──
+  recordWatering:
+    handler: src/handler/watering.recordWatering
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}/watering
+          method: POST
+          authorizer:
+            name: auth0Authorizer
+
+  getWateringHistory:
+    handler: src/handler/watering.getWateringHistory
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}/watering
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  # ── Sensor Readings ──
+  getSensorReadings:
+    handler: src/handler/sensor-readings.getSensorReadings
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}/readings
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  # ── Device API (X-Device-Key auth) ──
+  pair:
+    handler: src/handler/device.pair
+    events:
+      - httpApi:
+          path: /device/v1/pair
+          method: POST
+
+  submitReadings:
+    handler: src/handler/device.submitReadings
+    events:
+      - httpApi:
+          path: /device/v1/readings
+          method: POST
+
+  submitWatering:
+    handler: src/handler/device.submitWatering
+    events:
+      - httpApi:
+          path: /device/v1/watering
+          method: POST
+
+  getConfig:
+    handler: src/handler/device.getConfig
+    events:
+      - httpApi:
+          path: /device/v1/config
+          method: GET
+
+  # ── Device User API (Auth0 JWT) ──
+  generatePairingCode:
+    handler: src/handler/device.generatePairingCode
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}/pair
+          method: POST
+          authorizer:
+            name: auth0Authorizer
+
+  unpairDevice:
+    handler: src/handler/device.unpairDevice
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}/device
+          method: DELETE
+          authorizer:
+            name: auth0Authorizer
+
+  getDeviceStatus:
+    handler: src/handler/device.getDeviceStatus
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}/device
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  forceWater:
+    handler: src/handler/device.forceWater
+    events:
+      - httpApi:
+          path: /api/v1/user-flowers/{userFlowerId}/force-water
+          method: POST
+          authorizer:
+            name: auth0Authorizer
+
+resources:
+  Resources:
+    CollectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.COLLECTIONS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: PK, AttributeType: S }
+          - { AttributeName: SK, AttributeType: S }
+        KeySchema:
+          - { AttributeName: PK, KeyType: HASH }
+          - { AttributeName: SK, KeyType: RANGE }
+
+    UserFlowersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USER_FLOWERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: PK, AttributeType: S }
+          - { AttributeName: SK, AttributeType: S }
+          - { AttributeName: deviceId, AttributeType: S }
+        KeySchema:
+          - { AttributeName: PK, KeyType: HASH }
+          - { AttributeName: SK, KeyType: RANGE }
+        GlobalSecondaryIndexes:
+          - IndexName: DeviceIndex
+            KeySchema:
+              - { AttributeName: deviceId, KeyType: HASH }
+            Projection:
+              ProjectionType: ALL
+
+    WateringEventsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.WATERING_EVENTS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: PK, AttributeType: S }
+          - { AttributeName: SK, AttributeType: S }
+        KeySchema:
+          - { AttributeName: PK, KeyType: HASH }
+          - { AttributeName: SK, KeyType: RANGE }
+
+    SensorReadingsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.SENSOR_READINGS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: PK, AttributeType: S }
+          - { AttributeName: SK, AttributeType: S }
+        KeySchema:
+          - { AttributeName: PK, KeyType: HASH }
+          - { AttributeName: SK, KeyType: RANGE }
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
+    DevicesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DEVICES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: PK, AttributeType: S }
+        KeySchema:
+          - { AttributeName: PK, KeyType: HASH }
+
+    PairingCodesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.PAIRING_CODES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: PK, AttributeType: S }
+        KeySchema:
+          - { AttributeName: PK, KeyType: HASH }
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
+custom:
+  localstack:
+    stages: [local]
+    autostart: true
+    compose_file: ./docker-compose.yml

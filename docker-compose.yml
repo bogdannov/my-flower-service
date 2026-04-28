@@ -1,0 +1,18 @@
+services:
+  localstack:
+    image: localstack/localstack-pro
+    ports:
+      - "4566:4566" # Default edge port
+      - "4571:4571" # Local port for Secrets Manager
+    environment:
+      - SERVICES=lambda,apigateway,secretsmanager,cloudformation,iam,ssm,events,ecr,logs,dynamodb,sqs
+      - DEFAULT_REGION=eu-central-1
+      - LAMBDA_EXECUTOR=docker
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=eu-central-1
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}
+      - LAMBDA_LIMITS_MAX_FUNCTION_ENVVAR_SIZE_BYTES=8192
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./tmp/localstack}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
