@@ -1,21 +1,16 @@
 import { z } from "zod";
 
+export const DeviceStatusSchema = z.enum(["unlinked", "online", "linked"]);
+
 export const DeviceSchema = z.object({
   deviceId: z.string(),
-  userFlowerId: z.string(),
-  userId: z.string(),
+  userFlowerId: z.string().nullable(),
+  userId: z.string().nullable(),
   apiKeyHash: z.string(),
-  pairedAt: z.string().datetime(),
-  lastSeenAt: z.string().datetime(),
+  status: DeviceStatusSchema,
+  firmwareVersion: z.string().nullable(),
+  pairedAt: z.string().datetime().nullable(),
+  lastSeenAt: z.string().datetime().nullable(),
 });
 
 export type Device = z.infer<typeof DeviceSchema>;
-
-export const PairingCodeSchema = z.object({
-  code: z.string(),
-  userFlowerId: z.string(),
-  userId: z.string(),
-  ttl: z.number().int(),
-});
-
-export type PairingCode = z.infer<typeof PairingCodeSchema>;

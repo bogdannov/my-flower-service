@@ -27,7 +27,9 @@ export async function setup() {
   process.env.WATERING_EVENTS_TABLE = TEST_TABLE_NAMES.wateringEvents;
   process.env.SENSOR_READINGS_TABLE = TEST_TABLE_NAMES.sensorReadings;
   process.env.DEVICES_TABLE = TEST_TABLE_NAMES.devices;
-  process.env.PAIRING_CODES_TABLE = TEST_TABLE_NAMES.pairingCodes;
+  process.env.LATEST_FIRMWARE_VERSION = "1.1.0";
+  process.env.LATEST_FIRMWARE_URL = "https://example.com/firmware.bin";
+  process.env.LATEST_FIRMWARE_CHECKSUM = "abc123checksum";
   process.env.LOG_LEVEL = "error";
 
   const client = new DynamoDBClient({

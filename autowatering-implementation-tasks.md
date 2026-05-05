@@ -11,11 +11,442 @@ This document contains a complete breakdown of all implementation tasks. Each ta
 
 ---
 
+# PHASE 1 — Foundation
+
+This phase establishes the project scaffold, shared infrastructure, and testing setup. No business logic. Everything built here is consumed by all subsequent phases.
+
 ---
 
-## Task 1.3 — Configuration Module ✅ COMPLETED
+## Task 1.1 — Project Scaffold
 
-> Updated `src/module/config/Config.ts` with full Zod schema for all required env vars (STAGE, table names, Auth0, TTL, LOG_LEVEL, DYNAMODB_ENDPOINT). Exported `ConfigType`. Updated `logger.factory.ts` to use `LOG_LEVEL` and `STAGE`.
+**Depends on:** Nothing
+
+**Files to create:**
+```
+autowatering-backend/
+├── package.json
+├── tsconfig.json
+├── tsconfig.build.json
+├── .eslintrc.json
+├── .prettierrc
+├── .gitignore
+├── .nvmrc
+├── vitest.config.ts
+├── docker-compose.yml
+├── serverless.yml
+├── src/
+│   └── (empty, structure created in later tasks)
+└── tests/
+    └── (empty, structure created in later tasks)
+```
+
+### Prompt
+
+```
+Create the project scaffold for an autowatering IoT backend service.
+
+Tech stack:
+- Node.js 20 (set in .nvmrc)
+- TypeScript 5.x (strict mode enabled)
+- Serverless Framework v3 with serverless-esbuild plugin
+- Vitest for testing
+- ESLint + Prettier for code quality
+- Docker Compose with LocalStack for integration tests
+
+package.json requirements:
+- name: "autowatering-backend"
+- scripts:
+  - "build": serverless package
+  - "dev": serverless offline
+  - "tsc": tsc --noEmit
+  - "lint": eslint src/ tests/ --ext .ts
+  - "lint:fix": eslint src/ tests/ --ext .ts --fix
+  - "format": prettier --write .
+  - "test": vitest run
+  - "test:unit": vitest run tests/unit
+  - "test:integration": vitest run tests/integration
+  - "test:watch": vitest watch
+- dependencies: @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb, zod, ulid, jsonwebtoken, jwks-rsa
+- devDependencies: typescript, vitest, eslint, prettier, @types/node, @types/aws-lambda, serverless, serverless-esbuild, esbuild, testcontainers, @aws-sdk/client-dynamodb (for test setup)
+
+tsconfig.json:
+- strict: true
+- target: ES2022
+- module: Node16
+- moduleResolution: Node16
+- outDir: dist
+- rootDir: src
+- esModuleInterop: true
+- forceConsistentCasingInFileNames: true
+- skipLibCheck: true
+- declaration: true
+- paths: { "@autowatering/types": ["./types/src"] }
+
+tsconfig.build.json:
+- extends tsconfig.json
+- exclude: ["tests", "vitest.config.ts"]
+
+.eslintrc.json:
+- extends @typescript-eslint/recommended
+- rules: no-explicit-any → error, no-unused-vars → error (with argsIgnorePattern _)
+
+vitest.config.ts:
+- include: ["tests/**/*.test.ts"]
+- testTimeout: 30000
+
+docker-compose.yml:
+- service: localstack
+- image: localstack/localstack:3
+- ports: 4566:4566
+- environment: SERVICES=dynamodb, DEFAULT_REGION=eu-central-1
+
+serverless.yml (skeleton only, no functions yet):
+- service: autowatering-backend
+- provider:
+  - name: aws
+  - runtime: nodejs20.x
+  - region: eu-central-1
+  - stage: ${opt:stage, 'dev'}
+  - architecture: arm64
+  - httpApi with Auth0 authorizer placeholder
+- plugins: serverless-esbuild
+- custom.esbuild config for TypeScript bundling
+
+.gitignore: node_modules, dist, .serverless, .esbuild, coverage, *.js (root level only), .env
+
+Do NOT create any source files in src/ or tests/ — only the configuration files listed above. Make sure all configs are consistent with each other (paths, module resolution, etc).
+```
+
+### Description
+
+This task creates the empty project with all tooling configured. It is critical that TypeScript strict mode, ESLint no-any rule, and the path alias for the types package are set up correctly from the start — these are enforced project-wide and affect every subsequent task.
+
+The serverless.yml at this stage is a skeleton — functions and resources are added in later tasks. The Docker Compose file is minimal (DynamoDB only via LocalStack).
+
+### Acceptance Criteria
+
+- [ ] `npm install` completes without errors
+- [ ] `npm run tsc` passes (no source files yet, should be trivially clean)
+- [ ] `npm run lint` passes
+- [ ] `docker compose up -d` starts LocalStack, port 4566 is accessible
+- [ ] `docker compose down` shuts down cleanly
+- [ ] TypeScript strict mode is enabled (`"strict": true`)
+- [ ] ESLint rule `no-explicit-any` is set to `error`
+- [ ] `.nvmrc` contains `20`
+
+---
+
+## Task 1.2 — Types Package
+
+**Depends on:** 1.1
+
+**Files to create:**
+```
+types/
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── index.ts
+│   ├── entities/
+│   │   ├── index.ts
+│   │   ├── user-flower.ts
+│   │   ├── collection.ts
+│   │   ├── watering-event.ts
+│   │   ├── sensor-reading.ts
+│   │   ├── device.ts
+│   │   └── pairing-code.ts
+│   ├── api/
+│   │   ├── index.ts
+│   │   ├── collections.api.ts
+│   │   ├── user-flowers.api.ts
+│   │   ├── watering.api.ts
+│   │   ├── sensor-readings.api.ts
+│   │   └── device.api.ts
+│   └── enums/
+│       └── index.ts
+```
+
+### Prompt
+
+```
+Create the types package for the autowatering backend. This package is the SINGLE SOURCE OF TRUTH for all domain types. It will be published as a GitHub Package and consumed by the backend itself, mobile app, and any future services.
+
+All types MUST be defined as Zod schemas first, with TypeScript types inferred via z.infer<>. NEVER manually write a TypeScript interface that duplicates a Zod schema.
+
+Package setup (types/package.json):
+- name: "@anthropic-user/autowatering-types" (placeholder org)
+- version: "0.1.0"
+- main: "dist/index.js"
+- types: "dist/index.d.ts"
+- files: ["dist"]
+- scripts: { "build": "tsc", "prepublishOnly": "npm run build" }
+- publishConfig: { "registry": "https://npm.pkg.github.com" }
+- peerDependencies: { "zod": "^3.0.0" }
+- dependencies: { "zod": "^3.23.0" }
+
+types/tsconfig.json:
+- strict: true, target: ES2022, module: Node16, moduleResolution: Node16
+- outDir: dist, rootDir: src, declaration: true, declarationMap: true
+
+=== ENTITIES ===
+
+1. types/src/entities/user-flower.ts:
+
+WateringSettingsSchema:
+  - wateringThresholdPercent: z.number().min(0).max(100).default(20)
+  - wateringDurationSeconds: z.number().min(1).max(60).default(5)
+  - checkIntervalSeconds: z.number().min(10).max(300).default(30)
+  - scheduledWateringEnabled: z.boolean().default(false)
+  - scheduledWateringTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().default(null)
+
+PendingCommandSchema:
+  - commandId: z.string()
+  - type: z.literal("force_water")
+  - durationSeconds: z.number().min(1).max(60)
+  - createdAt: z.string().datetime()
+
+UserFlowerSchema:
+  - userId: z.string().min(1)
+  - userFlowerId: z.string().min(1)
+  - customName: z.string().min(1).max(100)
+  - flowerId: z.string().nullable().default(null)
+  - settings: WateringSettingsSchema
+  - lastMoisturePercent: z.number().min(0).max(100).nullable().default(null)
+  - lastReadingAt: z.string().datetime().nullable().default(null)
+  - lastWateredAt: z.string().datetime().nullable().default(null)
+  - deviceId: z.string().nullable().default(null)
+  - pendingCommands: z.array(PendingCommandSchema).default([])
+  - createdAt: z.string().datetime()
+  - updatedAt: z.string().datetime()
+
+Export: WateringSettingsSchema, WateringSettings, PendingCommandSchema, PendingCommand, UserFlowerSchema, UserFlower
+
+2. types/src/entities/collection.ts:
+
+CollectionSchema:
+  - userId: z.string().min(1)
+  - collectionId: z.string().min(1)
+  - name: z.string().min(1).max(100)
+  - userFlowerIds: z.array(z.string()).default([])
+  - isDefault: z.boolean().default(false)
+  - createdAt: z.string().datetime()
+  - updatedAt: z.string().datetime()
+
+Export: CollectionSchema, Collection
+
+3. types/src/entities/watering-event.ts:
+
+WateringEventSchema:
+  - userFlowerId: z.string().min(1)
+  - timestamp: z.string().datetime()
+  - source: WateringSourceSchema (import from enums)
+  - durationSeconds: z.number().min(1).max(60)
+  - moistureBeforePercent: z.number().min(0).max(100).nullable().default(null)
+  - moistureAfterPercent: z.number().min(0).max(100).nullable().default(null)
+  - commandId: z.string().nullable().default(null)
+  - deviceId: z.string().nullable().default(null)
+  - createdAt: z.string().datetime()
+
+Export: WateringEventSchema, WateringEvent
+
+4. types/src/entities/sensor-reading.ts:
+
+SensorReadingSchema:
+  - userFlowerId: z.string().min(1)
+  - timestamp: z.string().datetime()
+  - moisturePercent: z.number().min(0).max(100)
+  - rawValue: z.number().int().min(0).max(1023)
+  - deviceId: z.string().min(1)
+  - ttl: z.number().int()
+
+Export: SensorReadingSchema, SensorReading
+
+5. types/src/entities/device.ts:
+
+DeviceSchema:
+  - deviceId: z.string().min(1)   // MAC address
+  - userFlowerId: z.string().min(1)
+  - userId: z.string().min(1)
+  - apiKeyHash: z.string().min(1)
+  - pairedAt: z.string().datetime()
+  - lastSeenAt: z.string().datetime()
+  - firmwareVersion: z.string().nullable().default(null)
+
+Export: DeviceSchema, Device
+
+6. types/src/entities/pairing-code.ts:
+
+PairingCodeSchema:
+  - code: z.string().length(6)
+  - userId: z.string().min(1)
+  - userFlowerId: z.string().min(1)
+  - createdAt: z.string().datetime()
+  - ttl: z.number().int()
+
+Export: PairingCodeSchema, PairingCode
+
+=== ENUMS ===
+
+7. types/src/enums/index.ts:
+
+WateringSourceSchema: z.enum(["manual", "auto", "scheduled", "force"])
+CommandTypeSchema: z.enum(["force_water"])
+
+Export types: WateringSource, CommandType
+
+=== API SCHEMAS ===
+
+8. types/src/api/collections.api.ts:
+
+CreateCollectionRequestSchema:
+  - name: z.string().min(1).max(100)
+
+UpdateCollectionRequestSchema:
+  - name: z.string().min(1).max(100).optional()
+  - userFlowerIds: z.array(z.string()).optional()
+
+CollectionResponseSchema:
+  - collectionId, name, userFlowerIds, isDefault, createdAt, updatedAt (all from entity, NO userId)
+
+CollectionDetailResponseSchema:
+  - extends CollectionResponseSchema fields
+  - flowers: z.array(UserFlowerResponseSchema) — import from user-flowers.api.ts
+
+CollectionListResponseSchema:
+  - collections: z.array(CollectionResponseSchema)
+
+Export all schemas and inferred types.
+
+9. types/src/api/user-flowers.api.ts:
+
+CreateUserFlowerRequestSchema:
+  - customName: z.string().min(1).max(100)
+  - flowerId: z.string().nullable().optional()
+  - settings: WateringSettingsSchema.partial().optional()
+  - collectionId: z.string().optional()    // Optionally add to collection on creation
+
+UpdateUserFlowerRequestSchema:
+  - customName: z.string().min(1).max(100).optional()
+  - settings: WateringSettingsSchema.partial().optional()
+
+UserFlowerResponseSchema:
+  - userFlowerId, customName, flowerId, settings, lastMoisturePercent, lastReadingAt, lastWateredAt, deviceId, createdAt, updatedAt (NO userId — it's implicit from auth)
+
+UserFlowerListResponseSchema:
+  - flowers: z.array(UserFlowerResponseSchema)
+
+Export all schemas and inferred types.
+
+10. types/src/api/watering.api.ts:
+
+CreateWateringEventRequestSchema:
+  - source: z.literal("manual")   // Only manual allowed from user API
+  - durationSeconds: z.number().min(1).max(60).optional().default(0) // 0 = just marking "I watered it"
+
+WateringEventResponseSchema:
+  - timestamp, source, durationSeconds, moistureBeforePercent, moistureAfterPercent, deviceId, createdAt
+
+WateringHistoryResponseSchema:
+  - events: z.array(WateringEventResponseSchema)
+  - lastEvaluatedKey: z.record(z.string(), z.unknown()).optional()
+
+ForceWaterRequestSchema:
+  - durationSeconds: z.number().min(1).max(60).default(5)
+
+ForceWaterResponseSchema:
+  - commandId: z.string()
+  - status: z.literal("queued")
+
+Export all schemas and inferred types.
+
+11. types/src/api/sensor-readings.api.ts:
+
+GetSensorReadingsQuerySchema:
+  - from: z.string().datetime().optional()   // defaults to 24h ago
+  - to: z.string().datetime().optional()     // defaults to now
+  - limit: z.coerce.number().int().min(1).max(1000).optional().default(100)
+  - exclusiveStartKey: z.string().optional() // base64 encoded DynamoDB key
+
+SensorReadingResponseSchema:
+  - timestamp, moisturePercent, rawValue, deviceId
+
+SensorReadingsListResponseSchema:
+  - readings: z.array(SensorReadingResponseSchema)
+  - lastEvaluatedKey: z.string().optional()  // base64 encoded for pagination
+
+Export all schemas and inferred types.
+
+12. types/src/api/device.api.ts:
+
+DevicePairRequestSchema:
+  - code: z.string().length(6).toUpperCase()
+  - deviceId: z.string().min(1)   // MAC address
+
+DevicePairResponseSchema:
+  - apiKey: z.string()
+  - userFlowerId: z.string()
+  - settings: WateringSettingsSchema
+
+DeviceSubmitReadingRequestSchema:
+  - moisturePercent: z.number().min(0).max(100)
+  - rawValue: z.number().int().min(0).max(1023)
+
+DeviceSubmitWateringRequestSchema:
+  - source: z.enum(["auto", "scheduled", "force"])   // NOT manual — that's user-only
+  - durationSeconds: z.number().min(1).max(60)
+  - moistureBeforePercent: z.number().min(0).max(100).optional()
+  - moistureAfterPercent: z.number().min(0).max(100).optional()
+  - commandId: z.string().optional()   // Required when source is "force"
+
+DeviceConfigResponseSchema:
+  - settings: WateringSettingsSchema
+  - pendingCommands: z.array(PendingCommandSchema)
+
+GeneratePairingCodeResponseSchema:
+  - code: z.string()
+  - expiresAt: z.string().datetime()
+
+DeviceStatusResponseSchema:
+  - deviceId: z.string()
+  - pairedAt: z.string().datetime()
+  - lastSeenAt: z.string().datetime()
+  - firmwareVersion: z.string().nullable()
+
+Export all schemas and inferred types.
+
+=== INDEX FILES ===
+
+13. types/src/entities/index.ts — re-export everything from all entity files
+14. types/src/api/index.ts — re-export everything from all API files
+15. types/src/index.ts — re-export from entities, api, enums
+
+Make sure there are NO circular imports. The dependency direction is: enums ← entities ← api.
+Ensure every exported type has both Schema and inferred Type exported.
+Do NOT use "any" anywhere.
+```
+
+### Description
+
+This is the most critical task in the project — every other task depends on these types. The Zod-first approach ensures that the same schema is used for both compile-time type checking and runtime request validation. This eliminates the category of bugs where request types and validation logic drift apart.
+
+The `z.infer<>` pattern means we never write `interface UserFlower { ... }` separately. The Zod schema IS the type definition. If a field changes, it changes in one place.
+
+Response schemas deliberately exclude `userId` — it is an internal field derived from auth context, never sent to the client.
+
+### Acceptance Criteria
+
+- [ ] `cd types && npm install && npm run build` completes without errors
+- [ ] All entity schemas can parse valid data: `UserFlowerSchema.parse({...})` succeeds
+- [ ] All entity schemas reject invalid data: `UserFlowerSchema.parse({...})` throws on missing required fields
+- [ ] All API request schemas can be used for validation: `CreateUserFlowerRequestSchema.safeParse(body)`
+- [ ] No circular imports (entities don't import from api, enums don't import from entities)
+- [ ] Every schema has a corresponding exported TypeScript type via `z.infer<>`
+- [ ] `"any"` does not appear anywhere in the source code
+- [ ] `types/src/index.ts` re-exports everything — a consumer can `import { UserFlower, CreateUserFlowerRequestSchema } from "@.../autowatering-types"`
+
+---
+
+## Task 1.3 — Configuration Module
 
 **Depends on:** 1.1
 
@@ -92,9 +523,7 @@ The `DYNAMODB_ENDPOINT` optional field is specifically for LocalStack — when s
 
 ---
 
-## Task 1.4 — DynamoDB Client and Base Repository ✅ COMPLETED
-
-> Created `src/module/db/dynamo-client.ts` (DynamoDBDocumentClient factory supporting LocalStack via DYNAMODB_ENDPOINT) and `src/module/db/base.repository.ts` (abstract `BaseRepository<T>` with get, put, putWithCondition, query, delete, batchGet with retries, update).
+## Task 1.4 — DynamoDB Client and Base Repository
 
 **Depends on:** 1.3
 
@@ -229,9 +658,7 @@ The `putWithCondition` method is essential for idempotent writes — for example
 
 ---
 
-## Task 1.5 — Error Classes ✅ COMPLETED
-
-> Created `src/module/errors/app.error.ts` with `AppError` (abstract), `NotFoundError` (404), `ValidationError` (400, with optional details), `UnauthorizedError` (401), `ForbiddenError` (403), `ConflictError` (409), `GoneError` (410). Re-exported from `src/module/errors/index.ts`.
+## Task 1.5 — Error Classes
 
 **Depends on:** Nothing
 
@@ -309,9 +736,7 @@ The error hierarchy provides a clean contract between the service layer and the 
 
 ---
 
-## Task 1.6 — Dependency Injection Container ✅ COMPLETED
-
-> Created `src/bootstrap/factory/module/dynamodb-client.factory.ts` (DynamoDBClientFactory depends on ConfigFactory). Updated `src/bootstrap/inject.ts` to register DynamoDBClientFactory and expose `resetContainer()`. Removed obsolete HealthServiceFactory.
+## Task 1.6 — Dependency Injection Container
 
 **Depends on:** 1.3, 1.4, 1.5
 
@@ -372,7 +797,18 @@ export class ConfigFactory extends BaseFactory<Config> {
 
 === File 3: src/bootstrap/factory/module/logger.factory.ts ===
 
-LET'S USE WINSTON AS THE LOGGER and setup it so we can simply use it.
+Create a simple structured logger. For now, it wraps console with JSON output:
+
+interface Logger {
+  info(message: string, context?: Record<string, unknown>): void;
+  warn(message: string, context?: Record<string, unknown>): void;
+  error(message: string, context?: Record<string, unknown>): void;
+  debug(message: string, context?: Record<string, unknown>): void;
+}
+
+The LoggerFactory depends on ConfigFactory to read LOG_LEVEL.
+Each log line outputs: { level, message, timestamp, ...context }
+Levels filter: debug < info < warn < error. If LOG_LEVEL is "warn", debug and info are suppressed.
 
 === File 4: src/bootstrap/factory/module/dynamodb-client.factory.ts ===
 
@@ -437,9 +873,7 @@ The `resetContainer()` function is critical for testing — it ensures each test
 
 ---
 
-## Task 1.7 — Integration Test Setup ✅ COMPLETED
-
-> Installed `vitest` and `testcontainers`. Created `tests/integration/setup/tables.ts` (6 table definitions + TEST_TABLE_NAMES), `tests/integration/setup/global-setup.ts` (starts LocalStack via testcontainers, creates all tables, sets env vars), `tests/integration/setup/test-helpers.ts` (`clearTable`, `getTestDynamoDBClient`, `seedItem`). Created `vitest.config.ts`. Added `test:unit` and `test:integration` npm scripts. Created `tsconfig.test.json` for test type resolution.
+## Task 1.7 — Integration Test Setup
 
 **Depends on:** 1.1, 1.4
 
@@ -452,7 +886,7 @@ tests/
 │       ├── tables.ts
 │       └── test-helpers.ts
 └── unit/
-    └── hello.test.ts  (a simple test to verify unit test setup works)
+    └── (empty directory)
 ```
 
 **Files to modify:**
@@ -570,10 +1004,6 @@ Configure test projects or environments so unit and integration tests can run se
   }
 
 Do NOT use "any" type. Use proper types from @aws-sdk.
-
-In the end run all tests to verify the setup works:
-- `npm run test:integration` should start LocalStack, create tables, and pass tests
-- `npm run test:unit` should run without starting a container
 ```
 
 ### Description
@@ -598,9 +1028,7 @@ The global setup uses testcontainers rather than docker-compose because it manag
 
 ---
 
-## Task 1.8 — Health Endpoint ✅ COMPLETED
-
-> Updated `src/handler/health.ts` to use `inject().Config()` and `inject().DynamoDBClient()`, returning `{ status, stage, timestamp }` on 200 or `{ status: "error", message }` on 500. Updated `serverless.yml` with proper service name, all env var declarations, DynamoDB table resources (Collections, UserFlowers with DeviceIndex GSI, WateringEvents, SensorReadings with TTL, Devices, PairingCodes with TTL).
+## Task 1.8 — Health Endpoint
 
 **Depends on:** 1.6
 
@@ -690,9 +1118,7 @@ This phase implements the primary user-facing entities: UserFlowers and Collecti
 
 ---
 
-## Task 2.1 — Auth0 JWT Middleware ✅ COMPLETED
-
-> Created `src/module/auth/extract-user-id.ts` (extracts `sub` claim from API Gateway v2 JWT authorizer context) and `src/module/auth/jwt.middleware.ts` (local-dev JWT verification via `jose` using JWKS endpoint). `extractUserId` throws `UnauthorizedError` for missing/invalid claims.
+## Task 2.1 — Auth0 JWT Middleware
 
 **Depends on:** 1.3, 1.5, 1.6
 
@@ -775,18 +1201,16 @@ The `extractUserId` function is intentionally simple — it just reads from the 
 
 ---
 
-## Task 2.2 — UserFlowers Module ✅ COMPLETED
+## Task 2.2 — UserFlowers Module
 
-> Created `UserFlowerSchema`/types in `src/types/entities/user-flower.ts`, API request/response schemas in `src/types/api/user-flowers.api.ts`. Implemented `UserFlowersRepository` (extends `BaseRepository<UserFlower>`, GSI query for `findByDeviceId`, null-deviceId omission for GSI key safety) and `UserFlowersService` (CRUD, settings merge, snapshot updates, userId stripped from responses). Factories registered in `src/bootstrap/inject.ts`. Handlers in `src/handler/user-flowers.ts`. Unit tests (11) and integration tests (7) all pass.
+**Depends on:** 1.2, 1.4, 1.5, 1.6, 2.1
 
 **Files to create:**
 ```
-handler/
-├── user-flowers.ts
-
 src/module/user-flowers/
 ├── user-flowers.repository.ts
 ├── user-flowers.service.ts
+└── user-flowers.handler.ts
 
 src/bootstrap/factory/module/
 ├── user-flowers-repository.factory.ts
@@ -882,7 +1306,7 @@ Methods:
 Private helper:
 - toResponse(flower: UserFlower): UserFlowerResponse — maps entity to response (strips userId)
 
-=== Handler: src/handler/user-flowers.ts ===
+=== Handler: src/module/user-flowers/user-flowers.handler.ts ===
 
 Thin handlers that parse input, validate with Zod, call service, and return HTTP responses.
 
@@ -945,7 +1369,7 @@ Register them in the inject() return object.
 
 Add functions:
   createUserFlower:
-    handler: src/handler/user-flowers.createUserFlower
+    handler: src/module/user-flowers/user-flowers.handler.createUserFlower
     events:
       - httpApi:
           path: /api/v1/user-flowers
@@ -953,7 +1377,7 @@ Add functions:
           authorizer: auth0Authorizer
 
   listUserFlowers:
-    handler:src/handler/user-flowers.listUserFlowers
+    handler: src/module/user-flowers/user-flowers.handler.listUserFlowers
     events:
       - httpApi:
           path: /api/v1/user-flowers
@@ -961,7 +1385,7 @@ Add functions:
           authorizer: auth0Authorizer
 
   getUserFlower:
-    handler: src/handler/user-flowers.getUserFlower
+    handler: src/module/user-flowers/user-flowers.handler.getUserFlower
     events:
       - httpApi:
           path: /api/v1/user-flowers/{userFlowerId}
@@ -969,7 +1393,7 @@ Add functions:
           authorizer: auth0Authorizer
 
   updateUserFlower:
-    handler: src/handler/user-flowers.updateUserFlower
+    handler: src/module/user-flowers/user-flowers.handler.updateUserFlower
     events:
       - httpApi:
           path: /api/v1/user-flowers/{userFlowerId}
@@ -977,7 +1401,7 @@ Add functions:
           authorizer: auth0Authorizer
 
   deleteUserFlower:
-    handler: src/handler/user-flowers.deleteUserFlower
+    handler: src/module/user-flowers/user-flowers.handler.deleteUserFlower
     events:
       - httpApi:
           path: /api/v1/user-flowers/{userFlowerId}
@@ -1045,9 +1469,7 @@ The dynamic `update` method on the repository is particularly important — it b
 
 ---
 
-## Task 2.3 — Collections Module ✅ COMPLETED
-
-> Created `CollectionSchema`/types in `src/types/entities/collection.ts`, API schemas in `src/types/api/collections.api.ts`. Implemented `CollectionsRepository` (findByUser, findOne, findDefault, CRUD) and `CollectionsService` (create, list with auto-default-collection on empty, getDetail with batch-get enrichment, update, remove with ValidationError guard for default, addFlower idempotent, removeFlower, ensureDefaultCollection). Factories registered in `src/bootstrap/inject.ts`. Handlers in `src/handler/collections.ts`. Unit tests (10) and integration tests (6) all pass.
+## Task 2.3 — Collections Module
 
 **Depends on:** 2.2 (needs UserFlowersRepository for batch-get enrichment)
 
@@ -1218,20 +1640,16 @@ The `ensureDefaultCollection` is called lazily on first `list` call rather than 
 
 ---
 
-## Task 3.1 — Watering Module ✅ COMPLETED
-
-> Created `WateringEventSchema`/types in `src/types/entities/watering-event.ts`, API schemas in `src/types/api/watering.api.ts`. Implemented `WateringRepository` (create, getHistory with optional from/to range + pagination, getLatest) and `WateringService` (recordManualWatering with ownership check + snapshot update, recordDeviceWatering for Phase 4, getHistory with base64 cursor pagination). Factories registered in `src/bootstrap/inject.ts`. Handlers `recordWatering` (POST, 201) and `getWateringHistory` (GET) in `src/handler/watering.ts`. Unit tests (4) and integration tests (4) all pass.
+## Task 3.1 — Watering Module
 
 **Depends on:** 2.2
 
 **Files to create:**
 ```
-src/handler/
-└── watering.ts
-
 src/module/watering/
 ├── watering.repository.ts
 ├── watering.service.ts
+└── watering.handler.ts
 
 src/bootstrap/factory/module/
 ├── watering-repository.factory.ts
@@ -1304,7 +1722,7 @@ Methods:
    - Encode lastEvaluatedKey to base64 for response
    - Return response
 
-=== Handler: src/handler/watering.ts ===
+=== Handler: src/module/watering/watering.handler.ts ===
 
 Export handlers:
 1. recordWatering: POST /api/v1/user-flowers/{userFlowerId}/watering → 201
@@ -1355,20 +1773,16 @@ The pagination uses base64-encoded DynamoDB keys in the API. This is a common pa
 
 ---
 
-## Task 3.2 — Sensor Readings Module ✅ COMPLETED
-
-> Created `SensorReadingSchema`/types in `src/types/entities/sensor-reading.ts`, API schemas in `src/types/api/sensor-readings.api.ts`. Implemented `SensorReadingsRepository` (create with TTL, getByTimeRange with SK BETWEEN oldest-first, getLatest) and `SensorReadingsService` (recordReading calculates epoch TTL from config, getReadings defaults 24h window, base64 cursor pagination, flower ownership check). Factories registered in `src/bootstrap/inject.ts`. Handler `getSensorReadings` (GET only — no user POST endpoint) in `src/handler/sensor-readings.ts`. Unit tests (4) and integration tests (4) all pass.
+## Task 3.2 — Sensor Readings Module
 
 **Depends on:** 2.2
 
 **Files to create:**
 ```
-src/handler/
-└── sensor-readings.ts
-
 src/module/sensor-readings/
 ├── sensor-readings.repository.ts
 ├── sensor-readings.service.ts
+└── sensor-readings.handler.ts
 
 src/bootstrap/factory/module/
 ├── sensor-readings-repository.factory.ts
@@ -1433,7 +1847,7 @@ Methods:
    - Encode lastEvaluatedKey to base64
    - Map to response
 
-=== Handler: src/handler/sensor-readings.ts ===
+=== Handler: src/module/sensor-readings/sensor-readings.handler.ts ===
 
 Export handler:
 1. getSensorReadings: GET /api/v1/user-flowers/{userFlowerId}/readings → 200
@@ -1487,9 +1901,7 @@ Note that readings are returned in chronological order (oldest first, `ScanIndex
 
 ---
 
-## Task 4.1 — Device Module (Repositories) ✅ COMPLETED
-
-> Created `DevicesRepository` (single-PK table, CRUD + `updateLastSeen`) and `PairingRepository` (single-PK table, `putWithCondition` for collision-safe code creation) in `src/module/device/`. Factories `DevicesRepositoryFactory` and `PairingRepositoryFactory` registered in `src/bootstrap/inject.ts`.
+## Task 4.1 — Device Module (Repositories)
 
 **Depends on:** 1.4
 
@@ -1573,19 +1985,15 @@ These repositories are simpler than the domain ones — single PK, no sort key. 
 
 ---
 
-## Task 4.2 — Device Service & Handler ✅ COMPLETED
-
-> Created `Device`/`PairingCode` entity types and full Device API schemas. `DeviceService` implements: `generatePairingCode` (6-char code with collision retry), `completePairing` (raw key returned once, SHA-256 hash stored), `authenticateByKey` (O(1) deviceId-prefix lookup + hash compare, fire-and-forget lastSeenAt), `submitReading`/`submitWatering`, `getConfig`, `forceWater` (appends `cmd_` ULID command to pendingCommands), `unpairDevice`. Added `getOneFull`/`updateDeviceFields` to `UserFlowersService` for internal use. All 8 endpoints in `src/handler/device.ts`. Unit tests (13) and integration tests (7) all pass.
+## Task 4.2 — Device Service & Handler
 
 **Depends on:** 4.1, 2.2, 3.1, 3.2
 
 **Files to create:**
 ```
-src/handler/
-└── device.ts
-
 src/module/device/
 ├── device.service.ts
+└── device.handler.ts
 
 src/module/auth/
 └── device-key.middleware.ts
@@ -1712,7 +2120,7 @@ Private helper:
 - generateCode(): string — generates 6-char uppercase alphanumeric code
 - hashApiKey(key: string): string — SHA-256 hash
 
-=== File 3: src/handler/device.ts ===
+=== File 3: src/module/device/device.handler.ts ===
 
 Export handlers:
 
@@ -1835,6 +2243,7 @@ Force-watering commands are stored on the UserFlower record itself (`pendingComm
 **Files to create:**
 ```
 .github/workflows/
+├── ci.yml
 └── publish-types.yml
 ```
 
@@ -1843,7 +2252,41 @@ Force-watering commands are stored on the UserFlower record itself (`pendingComm
 ```
 Create GitHub Actions workflows for CI and types publishing.
 
-=== File: .github/workflows/publish-types.yml ===
+=== File 1: .github/workflows/ci.yml ===
+
+Name: CI
+Trigger: push to main, pull_request to main
+
+Jobs:
+
+1. lint-and-typecheck:
+   - runs-on: ubuntu-latest
+   - steps:
+     - checkout
+     - setup node 20
+     - npm ci
+     - npm run tsc
+     - npm run lint
+
+2. unit-tests:
+   - runs-on: ubuntu-latest
+   - steps:
+     - checkout
+     - setup node 20
+     - npm ci
+     - npm run test:unit
+
+3. integration-tests:
+   - runs-on: ubuntu-latest
+   - needs: [lint-and-typecheck]
+   - steps:
+     - checkout
+     - setup node 20
+     - npm ci
+     - npm run test:integration
+   - Note: testcontainers will handle Docker — the GitHub Actions runner has Docker available
+
+=== File 2: .github/workflows/publish-types.yml ===
 
 Name: Publish Types
 Trigger: push to main, paths: ["types/**"]
@@ -2013,3 +2456,290 @@ PairingCode (PK: code, TTL) — transient, links User+UserFlower to a pending De
 | GET | /device/v1/config | getConfig | 200 |
 
 **Total: 24 endpoints (20 User API + 4 Device API)**
+
+---
+
+# Appendix D — Device Activation Flow & Provisioning
+
+## Task D.1 — Factory Provisioning & Device Activation Flow
+
+**Depends on:** 4.1, 4.2
+
+**Files to create:**
+```
+scripts/
+└── provision-device.ts        # Run once per device at "production" time
+
+src/module/device/
+└── provisioning.service.ts    # Internal service, no handler — admin/script use only
+```
+
+**Files to modify:**
+```
+src/module/device/device.service.ts    # Add linkToFlower method
+src/module/device/device.handler.ts    # Add linkToFlower handler
+serverless.yml                         # Add linkToFlower endpoint
+types/src/api/device.api.ts            # Add LinkDeviceToFlowerRequest schema
+```
+
+### Overview
+
+The activation flow consists of three distinct stages that happen at different points in time:
+
+```
+Stage 1: Factory (developer runs a script)
+Stage 2: First boot (user plugs in the device)
+Stage 3: App pairing (user links device to a specific plant)
+```
+
+These three stages are intentionally decoupled — the device works and authenticates to the backend after Stage 2, but it only receives meaningful config and starts watering after Stage 3.
+
+---
+
+### Stage 1 — Factory Provisioning (Developer Action)
+
+Before a device is shipped, the developer runs a provisioning script once per device. This script:
+
+1. Generates a unique `deviceId` in format `mf-XXXXX` (e.g. `mf-00042`)
+2. Generates a raw API key in format `mf-XXXXX.<64 hex chars>`
+3. Computes SHA-256 hash of the raw API key
+4. Writes to DynamoDB `Devices` table:
+   ```
+   deviceId:        "mf-00042"
+   apiKeyHash:      "<sha256 hash>"
+   userFlowerId:    null          ← not linked to any plant yet
+   userId:          null          ← not linked to any user yet
+   pairedAt:        null
+   lastSeenAt:      null
+   firmwareVersion: null
+   status:          "unlinked"    ← new field, see below
+   ```
+5. Writes the raw `apiKey` + `ssid/password` placeholder to the ESP32 firmware config via Arduino IDE (developer flashes the device manually)
+6. Prints a sticker label: `mf-00042` — this goes on the box
+
+The device now exists in the database in `"unlinked"` status. The raw API key exists only in the ESP32 NVS flash — never stored in the database.
+
+**Provisioning script: scripts/provision-device.ts**
+
+```
+Usage: npx ts-node scripts/provision-device.ts --count 10 --prefix mf
+
+Output:
+  - Writes N device records to DynamoDB
+  - Prints a CSV: deviceId, rawApiKey (to be flashed to devices)
+  - CSV is printed to stdout only — never saved to disk
+```
+
+The script must:
+- Accept `--count` (number of devices) and `--prefix` (default "mf")
+- Pad the numeric suffix with leading zeros to 5 digits
+- Generate cryptographically secure random keys using `crypto.randomBytes(32)`
+- Hash using `crypto.createHash("sha256")`
+- Write all records to DynamoDB in a single `BatchWriteItem` call (max 25 per batch, chunk if needed)
+- Print results to stdout in CSV format: `deviceId,rawApiKey`
+- Accept `--stage` flag (dev/staging/prod) to target the correct DynamoDB table
+- NEVER log the raw API keys to any file — stdout only, developer pipes to a secure location
+
+---
+
+### Stage 2 — First Boot (User Action)
+
+When the user receives and powers on the device for the first time:
+
+**ESP32 behavior (firmware — not backend code, described here for context):**
+
+1. On first boot, ESP32 detects no WiFi credentials in NVS
+2. Starts in AP (Access Point) mode:
+   - SSID: `MyFlowers-<deviceId>` (e.g. `MyFlowers-mf-00042`)
+   - No password on the AP — the API key is the security layer
+   - Runs a minimal HTTP server on `192.168.4.1:80`
+3. Waits for a single POST request on `192.168.4.1/configure`:
+   ```json
+   { "ssid": "HomeWiFi", "password": "qwerty123" }
+   ```
+4. Saves WiFi credentials to NVS
+5. Reboots into normal mode
+
+**Mobile app behavior (described here for context, not backend code):**
+
+1. User opens app → "Add Device" → enters `mf-00042` from the sticker
+2. App validates the format (must match `mf-XXXXX` pattern)
+3. App instructs: "Connect your phone to WiFi network MyFlowers-mf-00042"
+4. User connects phone to the ESP32 AP
+5. App sends `POST http://192.168.4.1/configure` with home WiFi credentials
+6. App instructs user to reconnect phone back to home WiFi
+7. App polls `GET /api/v1/user-flowers/:id/device/status` waiting for device to come online
+
+**ESP32 normal mode (after WiFi credentials saved):**
+
+1. Connects to home WiFi
+2. Immediately calls `POST /device/v1/boot`:
+   ```
+   X-Device-Key: mf-00042.<secret>
+   Body: { "firmwareVersion": "1.0.0" }
+   ```
+3. Backend authenticates the device, updates `lastSeenAt` and `firmwareVersion`, sets `status: "online"`
+4. Device starts polling `GET /device/v1/config` every `checkIntervalSeconds`
+
+At this point the device is online and authenticated, but `userFlowerId` and `userId` are still `null`. The config response returns empty settings and no commands — the device idles.
+
+**New endpoint required:**
+
+```
+POST /device/v1/boot
+Auth: X-Device-Key
+Body: { firmwareVersion: string }
+Response 200: { status: "unlinked" | "linked", config?: DeviceConfigResponse }
+```
+
+If `status: "unlinked"` — device knows it has no plant and idles (reads sensor but doesn't water).
+If `status: "linked"` — device receives full config immediately without waiting for next poll.
+
+---
+
+### Stage 3 — App Pairing (User Links Device to a Plant)
+
+After the device comes online, the user links it to a specific plant in the app:
+
+**App flow:**
+
+1. App detects device is online (polling `GET /api/v1/user-flowers/:id/device/status` returns `lastSeenAt` is recent)
+2. User selects which plant this device should monitor
+3. App calls:
+   ```
+   POST /api/v1/user-flowers/:userFlowerId/pair
+   Auth: Auth0 JWT
+   Body: { "deviceId": "mf-00042" }
+   ```
+
+**Backend: `linkToFlower` method on DeviceService:**
+
+1. Verify `userFlowerId` belongs to `userId` (throw NotFoundError if not)
+2. Fetch device by `deviceId` — throw NotFoundError if device doesn't exist in DB
+3. If device `status` is already `"linked"` and `userFlowerId` matches → idempotent, return success
+4. If device `status` is `"linked"` to a DIFFERENT flower → throw ConflictError("Device already linked to another plant")
+5. Update Device record:
+   ```
+   userFlowerId: <userFlowerId>
+   userId:       <userId>
+   pairedAt:     now
+   status:       "linked"
+   ```
+6. Update UserFlower record: set `deviceId = "mf-00042"`
+7. Return `DeviceStatusResponse`
+
+From this point on, `GET /device/v1/config` returns full settings and the device begins normal operation.
+
+---
+
+### Device Status Field
+
+Add `status` field to the `Device` entity:
+
+```typescript
+// In types/src/entities/device.ts
+status: z.enum(["unlinked", "online", "linked"])
+```
+
+| Status | Meaning |
+|--------|---------|
+| `unlinked` | Device exists in DB (provisioned), never booted or no WiFi yet |
+| `online` | Device has booted and is connected, but not yet linked to a plant |
+| `linked` | Device is linked to a plant and operating normally |
+
+---
+
+### OTA Firmware Update Support (CRA Compliance)
+
+To comply with the EU Cyber Resilience Act requirement for security updates, the config response must include firmware update information. Add to `DeviceConfigResponse`:
+
+```typescript
+// In types/src/api/device.api.ts
+DeviceConfigResponseSchema extended with:
+  firmwareUpdate: z.object({
+    available: z.boolean(),
+    version: z.string().optional(),     // e.g. "1.1.0"
+    url: z.string().url().optional(),   // HTTPS URL to firmware binary
+    checksum: z.string().optional(),    // SHA-256 of firmware binary
+  })
+```
+
+The ESP32 checks `firmwareUpdate.available` on every config poll. If `true`, it downloads the binary from `url`, verifies the SHA-256 checksum, and performs OTA update via ESP32's built-in OTA library.
+
+The backend stores `latestFirmwareVersion` and `latestFirmwareUrl` in Config (environment variables). The config endpoint compares device's `firmwareVersion` against `latestFirmwareVersion` and sets `available: true` if they differ.
+
+No separate endpoint needed — firmware delivery is piggybacked on the existing config poll.
+
+---
+
+### New and Modified Endpoints Summary
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /device/v1/boot | X-Device-Key | First call after WiFi connected, updates status |
+| GET | /device/v1/config | X-Device-Key | Existing — now includes firmwareUpdate field |
+| POST | /api/v1/user-flowers/:id/pair | Auth0 JWT | Modified — now accepts `{ deviceId }` body instead of generating a code |
+| GET | /api/v1/user-flowers/:id/device | Auth0 JWT | Existing — now returns `status` field |
+
+---
+
+### Full Activation Timeline
+
+```
+[Factory]
+  Developer runs: npx ts-node scripts/provision-device.ts --count 1
+  → DynamoDB: { deviceId: "mf-00042", apiKeyHash: "...", status: "unlinked" }
+  → ESP32 flashed with: { deviceId: "mf-00042", apiKey: "mf-00042.secret" }
+  → Sticker printed: "mf-00042"
+
+[User — Day 1, minute 0]
+  User powers on device
+  ESP32 has no WiFi → starts AP "MyFlowers-mf-00042"
+
+[User — Day 1, minute 1]
+  User opens app → "Add Device" → enters "mf-00042"
+  App: "Connect to MyFlowers-mf-00042"
+  User connects phone to ESP32 AP
+  App POST 192.168.4.1/configure { ssid, password }
+  ESP32 saves WiFi, reboots
+
+[User — Day 1, minute 2]
+  ESP32 connects to HomeWiFi
+  ESP32 POST /device/v1/boot { firmwareVersion: "1.0.0" }
+  Backend: status → "online", lastSeenAt → now
+  Response: { status: "online" }   ← no config yet, device idles
+
+[User — Day 1, minute 2-3]
+  App polls GET /api/v1/user-flowers/:id/device/status
+  Sees lastSeenAt is recent → device is online
+  App: "Your device is online! Select a plant to link it to."
+  User selects "My Monstera"
+  App POST /api/v1/user-flowers/uf_abc123/pair { deviceId: "mf-00042" }
+  Backend: status → "linked", userFlowerId → "uf_abc123"
+
+[User — Day 1, minute 3+]
+  ESP32 next config poll: GET /device/v1/config
+  Response: { settings: { threshold: 20, ... }, pendingCommands: [], firmwareUpdate: { available: false } }
+  Device begins normal operation — reads sensor, waters when dry
+```
+
+---
+
+### Acceptance Criteria
+
+- [ ] Provisioning script generates unique deviceId and apiKey per device
+- [ ] Provisioning script writes to DynamoDB in batches (handles >25 devices)
+- [ ] Raw API key is NEVER written to any file — stdout only
+- [ ] `POST /device/v1/boot` authenticates device and sets status to "online"
+- [ ] `POST /device/v1/boot` returns `{ status: "unlinked" }` before flower is linked
+- [ ] `POST /api/v1/user-flowers/:id/pair` accepts `{ deviceId }` and links device to flower
+- [ ] Linking is idempotent — linking same device to same flower twice returns success
+- [ ] Linking a device already linked to a DIFFERENT flower returns ConflictError (409)
+- [ ] Device status transitions correctly: `unlinked → online → linked`
+- [ ] Config response includes `firmwareUpdate` field
+- [ ] `firmwareUpdate.available` is `true` when device firmware version differs from latest
+- [ ] OTA fields (`url`, `checksum`) are only included when update is available
+- [ ] All new fields added to types package schemas
+- [ ] Integration test covers the full activation timeline end-to-end
+- [ ] No `any` type anywhere
+- [ ] `npm run tsc` and `npm run lint` pass
