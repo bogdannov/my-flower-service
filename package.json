@@ -1,5 +1,22 @@
 {
+  "name": "@bogdannov/my-flowers-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for my-flowers-service",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "tsc": "tsc --noEmit",
     "lint": "biome check",
     "lint:fix": "biome check --fix",
