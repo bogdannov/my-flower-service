@@ -1,6 +1,6 @@
 org: 99lab
 app: app
-service: autowatering-backend
+service: my-flowers-service
 
 plugins:
   - serverless-localstack

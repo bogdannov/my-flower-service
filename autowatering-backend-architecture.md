@@ -162,7 +162,7 @@ This section is a ready-for-development guide. Each task is described with enoug
 ## 2.1 Project Structure
 
 ```
-autowatering-backend/
+my-flowers-service/
 ├── serverless.yml
 ├── docker-compose.yml              # LocalStack for integration tests
 ├── package.json
@@ -943,7 +943,7 @@ export interface Container {
 ### serverless.yml (key structure)
 
 ```yaml
-service: autowatering-backend
+service: my-flowers-service
 
 provider:
   name: aws
