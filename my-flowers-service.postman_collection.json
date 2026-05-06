@@ -1,0 +1,378 @@
+{
+  "info": {
+    "name": "my-flowers-service",
+    "description": "Collection for the my-flowers-service API.\n\n**Setup:**\n1. Set `baseUrl` to your deployed URL or `http://localhost:3000` for local.\n2. Set `token` to a valid Auth0 JWT (for user-facing endpoints).\n3. Set `deviceApiKey` to a pre-provisioned device API key (format: `<deviceId>.<secret>`).\n4. Run the happy-path flows top-to-bottom — each request auto-saves IDs into collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "token", "value": "", "type": "string", "description": "Auth0 JWT — paste a valid token here" },
+    { "key": "userFlowerId", "value": "", "type": "string", "description": "Auto-set by 'Create Flower'" },
+    { "key": "collectionId", "value": "", "type": "string", "description": "Auto-set by 'Create Collection'" },
+    { "key": "deviceApiKey", "value": "", "type": "string", "description": "Pre-provisioned device API key (format: <deviceId>.<secret>)" },
+    { "key": "commandId", "value": "", "type": "string", "description": "Auto-set by 'Force Water'" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Flowers",
+      "item": [
+        {
+          "name": "Create Flower",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('userFlowerId', body.userFlowerId);",
+                  "  console.log('userFlowerId saved:', body.userFlowerId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customName\": \"My Fern\",\n  \"settings\": {\n    \"wateringThresholdPercent\": 25,\n    \"wateringDurationSeconds\": 8,\n    \"checkIntervalSeconds\": 300,\n    \"scheduledWateringEnabled\": false,\n    \"scheduledWateringTime\": null\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers"] }
+          },
+          "response": []
+        },
+        {
+          "name": "List Flowers",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Flower",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Flower",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customName\": \"My Fern (updated)\",\n  \"settings\": {\n    \"wateringThresholdPercent\": 30\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Flower",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Collections",
+      "item": [
+        {
+          "name": "Create Collection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('collectionId', body.collectionId);",
+                  "  console.log('collectionId saved:', body.collectionId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Living Room Plants\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/collections", "host": ["{{baseUrl}}"], "path": ["api", "v1", "collections"] }
+          },
+          "response": []
+        },
+        {
+          "name": "List Collections",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/collections", "host": ["{{baseUrl}}"], "path": ["api", "v1", "collections"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Collection (with flowers)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/collections/{{collectionId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "collections", "{{collectionId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Collection",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bedroom Plants\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/collections/{{collectionId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "collections", "{{collectionId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Flower to Collection",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/v1/collections/{{collectionId}}/flowers/{{userFlowerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "collections", "{{collectionId}}", "flowers", "{{userFlowerId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Flower from Collection",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/collections/{{collectionId}}/flowers/{{userFlowerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "collections", "{{collectionId}}", "flowers", "{{userFlowerId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Collection",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/collections/{{collectionId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "collections", "{{collectionId}}"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Watering",
+      "item": [
+        {
+          "name": "Record Manual Watering",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"durationSeconds\": 15\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}/watering", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}", "watering"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Watering History",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}/watering?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-flowers", "{{userFlowerId}}", "watering"],
+              "query": [
+                { "key": "limit", "value": "20", "description": "Max items to return (default 20)" },
+                { "key": "exclusiveStartKey", "value": "", "description": "Base64 cursor from previous response nextCursor", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sensor Readings",
+      "item": [
+        {
+          "name": "Get Sensor Readings",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}/readings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user-flowers", "{{userFlowerId}}", "readings"],
+              "query": [
+                { "key": "from", "value": "2024-01-01T00:00:00.000Z", "description": "ISO 8601 start time (default: 24h ago)", "disabled": true },
+                { "key": "to", "value": "2024-12-31T23:59:59.000Z", "description": "ISO 8601 end time (default: now)", "disabled": true },
+                { "key": "limit", "value": "100", "description": "Max items (1–500)", "disabled": true },
+                { "key": "exclusiveStartKey", "value": "", "description": "Base64 cursor from previous response nextCursor", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Device — User API (Auth0)",
+      "description": "Endpoints called by the mobile/web user to manage device linking. Require Auth0 JWT.",
+      "item": [
+        {
+          "name": "Link Device to Flower",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"ESP32-001\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}/pair", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}", "pair"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Device Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}/device", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}", "device"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Force Water",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('commandId', body.commandId);",
+                  "  console.log('commandId saved:', body.commandId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"durationSeconds\": 10\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}/force-water", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}", "force-water"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Unpair Device",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}/device", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}", "device"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Device — Hardware API (X-Device-Key)",
+      "description": "Endpoints called by the ESP32 device. No Auth0 JWT — authenticated via X-Device-Key header.\n\nDevices are pre-provisioned with an API key (format: `<deviceId>.<secret>`). Set `deviceApiKey` in collection variables before using these requests.\n\nTypical flow:\n1. Link Device to Flower (via User API above)\n2. Get Config (polls settings + pending commands)\n3. Submit Reading\n4. Submit Watering",
+      "item": [
+        {
+          "name": "Get Config (Device)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "X-Device-Key", "value": "{{deviceApiKey}}" }],
+            "url": { "raw": "{{baseUrl}}/device/v1/config", "host": ["{{baseUrl}}"], "path": ["device", "v1", "config"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Reading (Device)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-Key", "value": "{{deviceApiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"moisturePercent\": 42,\n  \"rawValue\": 2100\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/device/v1/readings", "host": ["{{baseUrl}}"], "path": ["device", "v1", "readings"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Watering — autonomous (Device)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-Key", "value": "{{deviceApiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"auto\",\n  \"durationSeconds\": 8,\n  \"moistureBeforePercent\": 18,\n  \"timestamp\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/device/v1/watering", "host": ["{{baseUrl}}"], "path": ["device", "v1", "watering"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Watering — force command ack (Device)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-Key", "value": "{{deviceApiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"force\",\n  \"durationSeconds\": 10,\n  \"moistureBeforePercent\": 22,\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"commandId\": \"{{commandId}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/device/v1/watering", "host": ["{{baseUrl}}"], "path": ["device", "v1", "watering"] }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
