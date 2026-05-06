@@ -6,7 +6,6 @@ import { DeviceServiceFactory } from "./factory/module/device-service.factory";
 import { DevicesRepositoryFactory } from "./factory/module/devices-repository.factory";
 import { DynamoDBClientFactory } from "./factory/module/dynamodb-client.factory";
 import { LoggerFactory } from "./factory/module/logger.factory";
-import { PairingRepositoryFactory } from "./factory/module/pairing-repository.factory";
 import { SensorReadingsRepositoryFactory } from "./factory/module/sensor-readings-repository.factory";
 import { SensorReadingsServiceFactory } from "./factory/module/sensor-readings-service.factory";
 import { UserFlowersRepositoryFactory } from "./factory/module/user-flowers-repository.factory";
@@ -27,7 +26,6 @@ const injector = createInjector()
   .provideClass(SensorReadingsRepositoryFactory.injectionToken, SensorReadingsRepositoryFactory)
   .provideClass(SensorReadingsServiceFactory.injectionToken, SensorReadingsServiceFactory)
   .provideClass(DevicesRepositoryFactory.injectionToken, DevicesRepositoryFactory)
-  .provideClass(PairingRepositoryFactory.injectionToken, PairingRepositoryFactory)
   .provideClass(DeviceServiceFactory.injectionToken, DeviceServiceFactory);
 
 export function inject() {
@@ -44,7 +42,6 @@ export function inject() {
     SensorReadingsRepository: () => injector.resolve(SensorReadingsRepositoryFactory.injectionToken).make(),
     SensorReadingsService: () => injector.resolve(SensorReadingsServiceFactory.injectionToken).make(),
     DevicesRepository: () => injector.resolve(DevicesRepositoryFactory.injectionToken).make(),
-    PairingRepository: () => injector.resolve(PairingRepositoryFactory.injectionToken).make(),
     DeviceService: () => injector.resolve(DeviceServiceFactory.injectionToken).make(),
   };
 }
@@ -62,6 +59,5 @@ export function resetContainer(): void {
   injector.resolve(SensorReadingsRepositoryFactory.injectionToken).reset();
   injector.resolve(SensorReadingsServiceFactory.injectionToken).reset();
   injector.resolve(DevicesRepositoryFactory.injectionToken).reset();
-  injector.resolve(PairingRepositoryFactory.injectionToken).reset();
   injector.resolve(DeviceServiceFactory.injectionToken).reset();
 }

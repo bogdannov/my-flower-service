@@ -1,30 +1,7 @@
 import { z } from "zod";
+import { DeviceStatusSchema } from "../entities/device";
 import { WateringSettingsSchema } from "../entities/user-flower";
 import { PendingCommandSchema, WateringSourceSchema } from "../enums";
-
-// ── Pairing ──
-
-export const DevicePairRequestSchema = z.object({
-  deviceId: z.string().min(1),
-  code: z.string().length(6),
-});
-
-export type DevicePairRequest = z.infer<typeof DevicePairRequestSchema>;
-
-export const DevicePairResponseSchema = z.object({
-  apiKey: z.string(),
-  userFlowerId: z.string(),
-  settings: WateringSettingsSchema,
-});
-
-export type DevicePairResponse = z.infer<typeof DevicePairResponseSchema>;
-
-export const GeneratePairingCodeResponseSchema = z.object({
-  code: z.string(),
-  expiresAt: z.string().datetime(),
-});
-
-export type GeneratePairingCodeResponse = z.infer<typeof GeneratePairingCodeResponseSchema>;
 
 // ── Device submissions ──
 
@@ -52,21 +29,57 @@ export const ForceWaterResponseSchema = z.object({
 
 export type ForceWaterResponse = z.infer<typeof ForceWaterResponseSchema>;
 
+// ── Firmware update ──
+
+export const FirmwareUpdateSchema = z.object({
+  available: z.boolean(),
+  version: z.string().optional(),
+  url: z.string().url().optional(),
+  checksum: z.string().optional(),
+});
+
+export type FirmwareUpdate = z.infer<typeof FirmwareUpdateSchema>;
+
 // ── Device config (sent to ESP32) ──
 
 export const DeviceConfigResponseSchema = z.object({
   settings: WateringSettingsSchema,
   pendingCommands: z.array(PendingCommandSchema),
+  firmwareUpdate: FirmwareUpdateSchema,
 });
 
 export type DeviceConfigResponse = z.infer<typeof DeviceConfigResponseSchema>;
+
+// ── Boot ──
+
+export const DeviceBootRequestSchema = z.object({
+  firmwareVersion: z.string(),
+});
+
+export type DeviceBootRequest = z.infer<typeof DeviceBootRequestSchema>;
+
+export const DeviceBootResponseSchema = z.object({
+  status: z.enum(["unlinked", "linked"]),
+  config: DeviceConfigResponseSchema.optional(),
+});
+
+export type DeviceBootResponse = z.infer<typeof DeviceBootResponseSchema>;
+
+// ── Link device to flower (user-facing) ──
+
+export const LinkDeviceToFlowerRequestSchema = z.object({
+  deviceId: z.string().min(1),
+});
+
+export type LinkDeviceToFlowerRequest = z.infer<typeof LinkDeviceToFlowerRequestSchema>;
 
 // ── Device status (for users) ──
 
 export const DeviceStatusResponseSchema = z.object({
   deviceId: z.string(),
-  pairedAt: z.string().datetime(),
-  lastSeenAt: z.string().datetime(),
+  status: DeviceStatusSchema,
+  pairedAt: z.string().datetime().nullable(),
+  lastSeenAt: z.string().datetime().nullable(),
 });
 
 export type DeviceStatusResponse = z.infer<typeof DeviceStatusResponseSchema>;
