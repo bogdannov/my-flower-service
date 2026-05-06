@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Logger } from "winston";
-import type { ConfigType } from "../../src/module/config/Config";
 import { DeviceService } from "../../src/module/device/device.service";
 import type { DevicesRepository } from "../../src/module/device/devices.repository";
 import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from "../../src/module/errors";
@@ -60,19 +59,10 @@ const makeDevice = (overrides: Partial<Device> = {}): Device => ({
   userId: null,
   apiKeyHash: "abc123hash",
   status: "unlinked",
-  firmwareVersion: null,
   pairedAt: null,
   lastSeenAt: null,
   ...overrides,
 });
-
-const makeConfig = (): ConfigType =>
-  ({
-    SENSOR_READINGS_TTL_DAYS: 30,
-    LATEST_FIRMWARE_VERSION: "1.1.0",
-    LATEST_FIRMWARE_URL: "https://example.com/firmware.bin",
-    LATEST_FIRMWARE_CHECKSUM: "abc123checksum",
-  }) as ConfigType;
 
 // ── Mocks ──
 
@@ -81,7 +71,6 @@ const makeDevicesRepo = (): DevicesRepository =>
     findByDeviceId: vi.fn(),
     create: vi.fn(),
     updateLastSeen: vi.fn(),
-    updateOnBoot: vi.fn(),
     linkToFlower: vi.fn(),
     resetLinkage: vi.fn(),
     remove: vi.fn(),
@@ -115,64 +104,13 @@ describe("DeviceService", () => {
     userFlowersService = makeUserFlowersService();
     wateringService = makeWateringService();
     sensorReadingsService = makeSensorReadingsService();
-    service = new DeviceService(
-      devicesRepo,
-      userFlowersService,
-      wateringService,
-      sensorReadingsService,
-      makeConfig(),
-      makeLogger(),
-    );
-  });
-
-  describe("boot", () => {
-    it("returns { status: 'unlinked' } when device is not linked", async () => {
-      const { createHash: ch } = await import("node:crypto");
-      const apiKey = "mf-00001.somesecretpart";
-      const hash = ch("sha256").update(apiKey).digest("hex");
-      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(makeDevice({ apiKeyHash: hash, status: "unlinked" }));
-      vi.mocked(devicesRepo.updateOnBoot).mockResolvedValue();
-
-      const result = await service.boot(apiKey, { firmwareVersion: "1.0.0" });
-
-      expect(result.status).toBe("unlinked");
-      expect(result.config).toBeUndefined();
-      expect(devicesRepo.updateOnBoot).toHaveBeenCalledWith("mf-00001", "1.0.0");
-    });
-
-    it("returns { status: 'linked', config } when device is already linked", async () => {
-      const apiKey = "mf-00001.somesecretpart";
-      const hash = createHash("sha256").update(apiKey).digest("hex");
-      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(
-        makeDevice({ apiKeyHash: hash, status: "linked", userFlowerId: "uf_test", userId: "user_1" }),
-      );
-      vi.mocked(devicesRepo.updateOnBoot).mockResolvedValue();
-      vi.mocked(userFlowersService.getOneFull).mockResolvedValue(makeFlowerFull({ deviceId: "mf-00001" }));
-
-      const result = await service.boot(apiKey, { firmwareVersion: "1.0.0" });
-
-      expect(result.status).toBe("linked");
-      expect(result.config).toBeDefined();
-      expect(result.config?.firmwareUpdate).toBeDefined();
-    });
-
-    it("throws UnauthorizedError for invalid key", async () => {
-      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(makeDevice({ apiKeyHash: "wronghash" }));
-
-      await expect(service.boot("mf-00001.wrongkey", { firmwareVersion: "1.0.0" })).rejects.toThrow(UnauthorizedError);
-    });
-
-    it("throws UnauthorizedError for non-existent device", async () => {
-      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(null);
-
-      await expect(service.boot("mf-00001.anykey", { firmwareVersion: "1.0.0" })).rejects.toThrow(UnauthorizedError);
-    });
+    service = new DeviceService(devicesRepo, userFlowersService, wateringService, sensorReadingsService, makeLogger());
   });
 
   describe("linkToFlower", () => {
     it("links device to flower and returns DeviceStatusResponse", async () => {
       vi.mocked(userFlowersService.getOne).mockResolvedValue(makeFlowerResponse({ deviceId: null }));
-      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(makeDevice({ status: "online" }));
+      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(makeDevice({ status: "unlinked" }));
       vi.mocked(devicesRepo.linkToFlower).mockResolvedValue();
       vi.mocked(userFlowersService.updateDeviceFields).mockResolvedValue();
 
@@ -239,7 +177,7 @@ describe("DeviceService", () => {
     it("returns null userFlowerId for unlinked device", async () => {
       const apiKey = "mf-00001.somesecretpart";
       const hash = createHash("sha256").update(apiKey).digest("hex");
-      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(makeDevice({ apiKeyHash: hash, status: "online" }));
+      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(makeDevice({ apiKeyHash: hash, status: "unlinked" }));
       vi.mocked(devicesRepo.updateLastSeen).mockResolvedValue();
 
       const ctx = await service.authenticateByKey(apiKey);
@@ -319,28 +257,21 @@ describe("DeviceService", () => {
   });
 
   describe("getConfig", () => {
-    it("returns idle config with firmwareUpdate when device is not linked", async () => {
-      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(makeDevice({ firmwareVersion: "1.0.0" }));
-
+    it("returns idle config when device is not linked", async () => {
       const ctx = { deviceId: "mf-00001", userFlowerId: null, userId: null };
       const config = await service.getConfig(ctx);
 
       expect(config.pendingCommands).toHaveLength(0);
-      // firmware update available since 1.0.0 !== 1.1.0 (from makeConfig)
-      expect(config.firmwareUpdate.available).toBe(true);
-      expect(config.firmwareUpdate.version).toBe("1.1.0");
+      expect(config.settings.checkIntervalSeconds).toBe(60);
     });
 
-    it("returns flower settings and firmwareUpdate when device is linked", async () => {
-      vi.mocked(devicesRepo.findByDeviceId).mockResolvedValue(makeDevice({ firmwareVersion: "1.1.0" }));
+    it("returns flower settings when device is linked", async () => {
       vi.mocked(userFlowersService.getOneFull).mockResolvedValue(makeFlowerFull({ deviceId: "mf-00001" }));
 
       const ctx = { deviceId: "mf-00001", userFlowerId: "uf_test", userId: "user_1" };
       const config = await service.getConfig(ctx);
 
       expect(config.settings.wateringThresholdPercent).toBe(20);
-      // firmware is up to date
-      expect(config.firmwareUpdate.available).toBe(false);
     });
   });
 
@@ -376,7 +307,7 @@ describe("DeviceService", () => {
       await service.unpairDevice("user_1", "uf_test");
 
       expect(devicesRepo.resetLinkage).toHaveBeenCalledWith("mf-00001");
-      // Device record is NOT deleted — it stays in DB as "online"
+      // Device record is NOT deleted — it stays in DB as "unlinked"
       expect(devicesRepo.remove).not.toHaveBeenCalled();
       expect(userFlowersService.updateDeviceFields).toHaveBeenCalledWith("user_1", "uf_test", {
         deviceId: null,

@@ -19,16 +19,6 @@ export class DevicesRepository extends BaseRepository<Device> {
     await this.updateItem({ PK: deviceId }, updateExpression, expressionValues, expressionNames);
   }
 
-  async updateOnBoot(deviceId: string, firmwareVersion: string): Promise<void> {
-    const now = new Date().toISOString();
-    const { updateExpression, expressionValues, expressionNames } = this.buildUpdateExpression({
-      status: "online",
-      lastSeenAt: now,
-      firmwareVersion,
-    });
-    await this.updateItem({ PK: deviceId }, updateExpression, expressionValues, expressionNames);
-  }
-
   async linkToFlower(deviceId: string, userFlowerId: string, userId: string): Promise<void> {
     const now = new Date().toISOString();
     const { updateExpression, expressionValues, expressionNames } = this.buildUpdateExpression({
@@ -45,7 +35,7 @@ export class DevicesRepository extends BaseRepository<Device> {
       userFlowerId: null,
       userId: null,
       pairedAt: null,
-      status: "online",
+      status: "unlinked",
     });
     await this.updateItem({ PK: deviceId }, updateExpression, expressionValues, expressionNames);
   }

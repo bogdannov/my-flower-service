@@ -3,7 +3,6 @@ import { inject } from "../bootstrap/inject";
 import { extractDeviceContext } from "../module/auth/device-key.middleware";
 import { extractUserId } from "../module/auth/extract-user-id";
 import {
-  DeviceBootRequestSchema,
   DeviceSubmitReadingRequestSchema,
   DeviceWateringRequestSchema,
   ForceWaterRequestSchema,
@@ -14,37 +13,6 @@ import { handleError } from "./error-handler";
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
 // ── Device API (X-Device-Key auth) ──
-
-export async function boot(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
-  try {
-    const apiKey = event.headers["x-device-key"] ?? event.headers["X-Device-Key"];
-
-    if (!apiKey) {
-      return {
-        statusCode: 401,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ code: "UNAUTHORIZED", message: "Missing device key" }),
-      };
-    }
-
-    const parsed = DeviceBootRequestSchema.safeParse(JSON.parse(event.body ?? "{}"));
-
-    if (!parsed.success) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }),
-      };
-    }
-
-    const service = await inject().DeviceService();
-    const result = await service.boot(apiKey, parsed.data);
-
-    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(result) };
-  } catch (error) {
-    return handleError(error);
-  }
-}
 
 export async function submitReadings(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
   try {
