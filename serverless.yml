@@ -20,7 +20,6 @@ provider:
           - ${ssm:/my-flowers-service/${self:provider.stage}/auth0-audience, 'placeholder-audience'}
   environment:
     STAGE: ${self:provider.stage}
-    AWS_REGION: ${self:provider.region}
     COLLECTIONS_TABLE: ${self:service}-collections-${self:provider.stage}
     USER_FLOWERS_TABLE: ${self:service}-user-flowers-${self:provider.stage}
     WATERING_EVENTS_TABLE: ${self:service}-watering-events-${self:provider.stage}
