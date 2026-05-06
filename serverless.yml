@@ -10,6 +10,14 @@ provider:
   runtime: nodejs20.x
   region: eu-central-1
   stage: ${opt:stage, 'dev'}
+  httpApi:
+    authorizers:
+      auth0Authorizer:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl: https://${ssm:/my-flowers-service/${self:provider.stage}/auth0-domain, 'placeholder.auth0.com'}/
+        audience:
+          - ${ssm:/my-flowers-service/${self:provider.stage}/auth0-audience, 'placeholder-audience'}
   environment:
     STAGE: ${self:provider.stage}
     AWS_REGION: ${self:provider.region}
@@ -18,11 +26,8 @@ provider:
     WATERING_EVENTS_TABLE: ${self:service}-watering-events-${self:provider.stage}
     SENSOR_READINGS_TABLE: ${self:service}-sensor-readings-${self:provider.stage}
     DEVICES_TABLE: ${self:service}-devices-${self:provider.stage}
-    AUTH0_DOMAIN: ${ssm:/autowatering/${self:provider.stage}/auth0-domain, 'placeholder.auth0.com'}
-    AUTH0_AUDIENCE: ${ssm:/autowatering/${self:provider.stage}/auth0-audience, 'placeholder-audience'}
-    LATEST_FIRMWARE_VERSION: ${ssm:/autowatering/${self:provider.stage}/latest-firmware-version, '1.0.0'}
-    LATEST_FIRMWARE_URL: ${ssm:/autowatering/${self:provider.stage}/latest-firmware-url, 'https://placeholder.example.com/firmware.bin'}
-    LATEST_FIRMWARE_CHECKSUM: ${ssm:/autowatering/${self:provider.stage}/latest-firmware-checksum, 'placeholder-checksum'}
+    AUTH0_DOMAIN: ${ssm:/my-flowers-service/${self:provider.stage}/auth0-domain, 'placeholder.auth0.com'}
+    AUTH0_AUDIENCE: ${ssm:/my-flowers-service/${self:provider.stage}/auth0-audience, 'placeholder-audience'}
 
 functions:
   # ── Health ──
@@ -173,13 +178,6 @@ functions:
             name: auth0Authorizer
 
   # ── Device API (X-Device-Key auth) ──
-  boot:
-    handler: src/handler/device.boot
-    events:
-      - httpApi:
-          path: /device/v1/boot
-          method: POST
-
   submitReadings:
     handler: src/handler/device.submitReadings
     events:

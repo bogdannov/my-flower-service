@@ -11,9 +11,6 @@ const ConfigSchema = z.object({
   AUTH0_DOMAIN: z.string(),
   AUTH0_AUDIENCE: z.string(),
   SENSOR_READINGS_TTL_DAYS: z.coerce.number().default(30),
-  LATEST_FIRMWARE_VERSION: z.string(),
-  LATEST_FIRMWARE_URL: z.string().url(),
-  LATEST_FIRMWARE_CHECKSUM: z.string(),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   DYNAMODB_ENDPOINT: z.string().optional(),
 });

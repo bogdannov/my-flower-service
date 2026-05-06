@@ -3,8 +3,6 @@ import { ulid } from "ulid";
 import type { Logger } from "winston";
 import type {
   Device,
-  DeviceBootRequest,
-  DeviceBootResponse,
   DeviceConfigResponse,
   DeviceStatusResponse,
   DeviceSubmitReadingRequest,
@@ -13,7 +11,6 @@ import type {
   ForceWaterResponse,
   LinkDeviceToFlowerRequest,
 } from "../../types";
-import type { ConfigType } from "../config/Config";
 import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from "../errors";
 import type { SensorReadingsService } from "../sensor-readings/sensor-readings.service";
 import type { UserFlowersService } from "../user-flowers/user-flowers.service";
@@ -34,28 +31,8 @@ export class DeviceService {
     private readonly userFlowersService: UserFlowersService,
     private readonly wateringService: WateringService,
     private readonly sensorReadingsService: SensorReadingsService,
-    private readonly config: ConfigType,
     private readonly logger: Logger,
   ) {}
-
-  async boot(apiKey: string, request: DeviceBootRequest): Promise<DeviceBootResponse> {
-    const device = await this.findAndVerifyDevice(apiKey);
-
-    await this.devicesRepository.updateOnBoot(device.deviceId, request.firmwareVersion);
-
-    if (device.status === "linked" && device.userFlowerId !== null && device.userId !== null) {
-      const ctx: DeviceContext = {
-        deviceId: device.deviceId,
-        userFlowerId: device.userFlowerId,
-        userId: device.userId,
-      };
-      const config = await this.getConfig(ctx);
-      return { status: "linked", config };
-    }
-
-    this.logger.debug("Device booted, not yet linked", { deviceId: device.deviceId });
-    return { status: "unlinked" };
-  }
 
   async linkToFlower(
     userId: string,
@@ -155,11 +132,8 @@ export class DeviceService {
   }
 
   async getConfig(deviceContext: DeviceContext): Promise<DeviceConfigResponse> {
-    const device = await this.devicesRepository.findByDeviceId(deviceContext.deviceId);
-    const firmwareUpdate = this.buildFirmwareUpdate(device?.firmwareVersion ?? null);
-
     if (deviceContext.userFlowerId === null || deviceContext.userId === null) {
-      // Device is online but not linked to a plant — return idle config
+      // Device is not yet linked to a plant — return idle config
       return {
         settings: {
           wateringThresholdPercent: 0,
@@ -169,12 +143,11 @@ export class DeviceService {
           scheduledWateringTime: null,
         },
         pendingCommands: [],
-        firmwareUpdate,
       };
     }
 
     const flower = await this.userFlowersService.getOneFull(deviceContext.userId, deviceContext.userFlowerId);
-    return { settings: flower.settings, pendingCommands: flower.pendingCommands, firmwareUpdate };
+    return { settings: flower.settings, pendingCommands: flower.pendingCommands };
   }
 
   async forceWater(userId: string, userFlowerId: string, request: ForceWaterRequest): Promise<ForceWaterResponse> {
@@ -257,21 +230,6 @@ export class DeviceService {
     }
 
     return device;
-  }
-
-  private buildFirmwareUpdate(deviceFirmwareVersion: string | null) {
-    const latestVersion = this.config.LATEST_FIRMWARE_VERSION;
-
-    if (deviceFirmwareVersion === null || deviceFirmwareVersion === latestVersion) {
-      return { available: false };
-    }
-
-    return {
-      available: true,
-      version: latestVersion,
-      url: this.config.LATEST_FIRMWARE_URL,
-      checksum: this.config.LATEST_FIRMWARE_CHECKSUM,
-    };
   }
 
   private hashApiKey(key: string): string {

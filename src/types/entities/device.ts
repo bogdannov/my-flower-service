@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const DeviceStatusSchema = z.enum(["unlinked", "online", "linked"]);
+export const DeviceStatusSchema = z.enum(["unlinked", "linked"]);
 
 export const DeviceSchema = z.object({
   deviceId: z.string(),
@@ -8,7 +8,6 @@ export const DeviceSchema = z.object({
   userId: z.string().nullable(),
   apiKeyHash: z.string(),
   status: DeviceStatusSchema,
-  firmwareVersion: z.string().nullable(),
   pairedAt: z.string().datetime().nullable(),
   lastSeenAt: z.string().datetime().nullable(),
 });

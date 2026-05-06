@@ -29,41 +29,14 @@ export const ForceWaterResponseSchema = z.object({
 
 export type ForceWaterResponse = z.infer<typeof ForceWaterResponseSchema>;
 
-// ── Firmware update ──
-
-export const FirmwareUpdateSchema = z.object({
-  available: z.boolean(),
-  version: z.string().optional(),
-  url: z.string().url().optional(),
-  checksum: z.string().optional(),
-});
-
-export type FirmwareUpdate = z.infer<typeof FirmwareUpdateSchema>;
-
 // ── Device config (sent to ESP32) ──
 
 export const DeviceConfigResponseSchema = z.object({
   settings: WateringSettingsSchema,
   pendingCommands: z.array(PendingCommandSchema),
-  firmwareUpdate: FirmwareUpdateSchema,
 });
 
 export type DeviceConfigResponse = z.infer<typeof DeviceConfigResponseSchema>;
-
-// ── Boot ──
-
-export const DeviceBootRequestSchema = z.object({
-  firmwareVersion: z.string(),
-});
-
-export type DeviceBootRequest = z.infer<typeof DeviceBootRequestSchema>;
-
-export const DeviceBootResponseSchema = z.object({
-  status: z.enum(["unlinked", "linked"]),
-  config: DeviceConfigResponseSchema.optional(),
-});
-
-export type DeviceBootResponse = z.infer<typeof DeviceBootResponseSchema>;
 
 // ── Link device to flower (user-facing) ──
 
