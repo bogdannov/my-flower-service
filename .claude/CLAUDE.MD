@@ -24,6 +24,7 @@ When working on this service, you MUST follow these architectural patterns witho
 - Handlers for API endpoints must be tiny and delegate all logic to services and handle HTTP-specific concerns (status codes, request parsing, etc.)
 - Do not call handlers .handler in the name of the file it's gonna be failed by serverless framework, just name it health.ts, posts.ts, etc.
 - All handlers must be located in handlers directory
+- In case you add/moify routes - update postman collection file in the root.
 
 ### 1. Dependency Injection Pattern (MANDATORY)
 
