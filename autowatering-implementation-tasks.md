@@ -23,7 +23,7 @@ This phase establishes the project scaffold, shared infrastructure, and testing 
 
 **Files to create:**
 ```
-autowatering-backend/
+my-flowers-service/
 ├── package.json
 ├── tsconfig.json
 ├── tsconfig.build.json
@@ -54,7 +54,7 @@ Tech stack:
 - Docker Compose with LocalStack for integration tests
 
 package.json requirements:
-- name: "autowatering-backend"
+- name: "my-flowers-service"
 - scripts:
   - "build": serverless package
   - "dev": serverless offline
@@ -101,7 +101,7 @@ docker-compose.yml:
 - environment: SERVICES=dynamodb, DEFAULT_REGION=eu-central-1
 
 serverless.yml (skeleton only, no functions yet):
-- service: autowatering-backend
+- service: my-flowers-service
 - provider:
   - name: aws
   - runtime: nodejs20.x

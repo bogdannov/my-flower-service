@@ -49,7 +49,7 @@ function parseArgs(): { count: number; prefix: string; stage: string } {
 // ── Helpers ──
 
 function buildTableName(stage: string): string {
-  return process.env.DEVICES_TABLE ?? `autowatering-backend-devices-${stage}`;
+  return process.env.DEVICES_TABLE ?? `my-flowers-service-devices-${stage}`;
 }
 
 interface ProvisionedDevice {
