@@ -11,59 +11,41 @@ permissions:
 jobs:
   tsc:
     runs-on: ubuntu-latest
-    env:
-      BRO_NPM_TOKEN: ${{ secrets.BRO_NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@brobrew'
-      - run: npm whoami --registry=https://npm.pkg.github.com
-      - run: npm view @brobrew/serverless@0.4.0 --registry=https://npm.pkg.github.com
       - run: npm ci
       - run: npm run tsc
 
   lint:
     runs-on: ubuntu-latest
-    env:
-      BRO_NPM_TOKEN: ${{ secrets.BRO_NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@brobrew'
       - run: npm ci
       - run: npm run lint
 
   unit-tests:
     runs-on: ubuntu-latest
-    env:
-      BRO_NPM_TOKEN: ${{ secrets.BRO_NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@brobrew'
       - run: npm ci
       - run: npm run test:unit
 
   integration-tests:
     runs-on: ubuntu-latest
-    env:
-      BRO_NPM_TOKEN: ${{ secrets.BRO_NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@brobrew'
       - run: npm ci
       - run: npm run test:integration
 
@@ -71,15 +53,11 @@ jobs:
     needs: [tsc, lint, unit-tests, integration-tests]
     runs-on: ubuntu-latest
     environment: prod
-    env:
-      BRO_NPM_TOKEN: ${{ secrets.BRO_NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@brobrew'
       - run: npm ci
       - name: serverless deploy
         run: npm run prod:deploy
