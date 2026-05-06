@@ -67,15 +67,17 @@ jobs:
   publish-types:
     needs: [deploy]
     runs-on: ubuntu-latest
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.MY_FLOWERS_NPM_PUBLISH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@bogdannov'
       - run: npm ci
       - run: npm run build
+      - name: Configure npm auth
+        env:
+          TOKEN: ${{ secrets.MY_FLOWERS_NPM_PUBLISH_TOKEN }}
+        run: |
+          echo "Token suffix: ${TOKEN: -3}"
+          npm config set //npm.pkg.github.com/:_authToken $TOKEN
       - run: npm publish
