@@ -9,10 +9,6 @@ export interface FlowersListResult {
 }
 
 export class FlowersRepository extends BaseRepository<Flower> {
-  constructor(client: DynamoDBDocumentClient, tableName: string) {
-    super(client, tableName);
-  }
-
   async findById(id: string): Promise<Flower | null> {
     return this.get({ PK: id });
   }

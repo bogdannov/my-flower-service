@@ -57,6 +57,7 @@ export class WateringService {
       durationSeconds: request.durationSeconds,
       moistureBeforePercent: request.moistureBeforePercent,
       deviceId,
+      notes: null,
     };
 
     await this.repository.create(event);
