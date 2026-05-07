@@ -8,6 +8,8 @@ const ConfigSchema = z.object({
   WATERING_EVENTS_TABLE: z.string(),
   SENSOR_READINGS_TABLE: z.string(),
   DEVICES_TABLE: z.string(),
+  FLOWERS_TABLE: z.string(),
+  ANTHROPIC_API_KEY: z.string(),
   AUTH0_DOMAIN: z.string(),
   AUTH0_AUDIENCE: z.string(),
   SENSOR_READINGS_TTL_DAYS: z.coerce.number().default(30),

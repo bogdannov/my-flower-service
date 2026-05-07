@@ -1,10 +1,13 @@
 import { createInjector } from "typed-inject";
+import { AiServiceFactory } from "./factory/module/ai-service.factory";
 import { CollectionsRepositoryFactory } from "./factory/module/collections-repository.factory";
 import { CollectionsServiceFactory } from "./factory/module/collections-service.factory";
 import { ConfigFactory } from "./factory/module/config.factory";
 import { DeviceServiceFactory } from "./factory/module/device-service.factory";
 import { DevicesRepositoryFactory } from "./factory/module/devices-repository.factory";
 import { DynamoDBClientFactory } from "./factory/module/dynamodb-client.factory";
+import { FlowersRepositoryFactory } from "./factory/module/flowers-repository.factory";
+import { FlowersServiceFactory } from "./factory/module/flowers-service.factory";
 import { LoggerFactory } from "./factory/module/logger.factory";
 import { SensorReadingsRepositoryFactory } from "./factory/module/sensor-readings-repository.factory";
 import { SensorReadingsServiceFactory } from "./factory/module/sensor-readings-service.factory";
@@ -26,7 +29,10 @@ const injector = createInjector()
   .provideClass(SensorReadingsRepositoryFactory.injectionToken, SensorReadingsRepositoryFactory)
   .provideClass(SensorReadingsServiceFactory.injectionToken, SensorReadingsServiceFactory)
   .provideClass(DevicesRepositoryFactory.injectionToken, DevicesRepositoryFactory)
-  .provideClass(DeviceServiceFactory.injectionToken, DeviceServiceFactory);
+  .provideClass(DeviceServiceFactory.injectionToken, DeviceServiceFactory)
+  .provideClass(FlowersRepositoryFactory.injectionToken, FlowersRepositoryFactory)
+  .provideClass(FlowersServiceFactory.injectionToken, FlowersServiceFactory)
+  .provideClass(AiServiceFactory.injectionToken, AiServiceFactory);
 
 export function inject() {
   return {
@@ -43,6 +49,9 @@ export function inject() {
     SensorReadingsService: () => injector.resolve(SensorReadingsServiceFactory.injectionToken).make(),
     DevicesRepository: () => injector.resolve(DevicesRepositoryFactory.injectionToken).make(),
     DeviceService: () => injector.resolve(DeviceServiceFactory.injectionToken).make(),
+    FlowersRepository: () => injector.resolve(FlowersRepositoryFactory.injectionToken).make(),
+    FlowersService: () => injector.resolve(FlowersServiceFactory.injectionToken).make(),
+    AiService: () => injector.resolve(AiServiceFactory.injectionToken).make(),
   };
 }
 
@@ -60,4 +69,7 @@ export function resetContainer(): void {
   injector.resolve(SensorReadingsServiceFactory.injectionToken).reset();
   injector.resolve(DevicesRepositoryFactory.injectionToken).reset();
   injector.resolve(DeviceServiceFactory.injectionToken).reset();
+  injector.resolve(FlowersRepositoryFactory.injectionToken).reset();
+  injector.resolve(FlowersServiceFactory.injectionToken).reset();
+  injector.resolve(AiServiceFactory.injectionToken).reset();
 }
