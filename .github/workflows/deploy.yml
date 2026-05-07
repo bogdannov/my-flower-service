@@ -80,4 +80,8 @@ jobs:
         run: |
           echo "Token suffix: ${TOKEN: -3}"
           npm config set //npm.pkg.github.com/:_authToken $TOKEN
+      - name: Debug npm config
+        run: |
+          npm config list
+          cat ~/.npmrc
       - run: npm publish

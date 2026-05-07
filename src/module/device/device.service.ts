@@ -59,6 +59,8 @@ export class DeviceService {
         status: device.status,
         pairedAt: device.pairedAt,
         lastSeenAt: device.lastSeenAt,
+        firmwareVersion: device.firmwareVersion,
+        moisturePercent: flower.lastMoisturePercent,
       };
     }
 
@@ -78,6 +80,8 @@ export class DeviceService {
       status: "linked",
       pairedAt: now,
       lastSeenAt: device.lastSeenAt,
+      firmwareVersion: device.firmwareVersion,
+      moisturePercent: flower.lastMoisturePercent,
     };
   }
 
@@ -208,6 +212,8 @@ export class DeviceService {
       status: device.status,
       pairedAt: device.pairedAt,
       lastSeenAt: device.lastSeenAt,
+      firmwareVersion: device.firmwareVersion,
+      moisturePercent: flower.lastMoisturePercent,
     };
   }
 

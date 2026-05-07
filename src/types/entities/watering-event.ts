@@ -8,6 +8,7 @@ export const WateringEventSchema = z.object({
   durationSeconds: z.number().int().min(0),
   moistureBeforePercent: z.number().min(0).max(100).nullable(),
   deviceId: z.string().nullable(),
+  notes: z.string().nullable().default(null),
 });
 
 export type WateringEvent = z.infer<typeof WateringEventSchema>;

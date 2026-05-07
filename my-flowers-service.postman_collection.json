@@ -10,7 +10,8 @@
     { "key": "userFlowerId", "value": "", "type": "string", "description": "Auto-set by 'Create Flower'" },
     { "key": "collectionId", "value": "", "type": "string", "description": "Auto-set by 'Create Collection'" },
     { "key": "deviceApiKey", "value": "", "type": "string", "description": "Pre-provisioned device API key (format: <deviceId>.<secret>)" },
-    { "key": "commandId", "value": "", "type": "string", "description": "Auto-set by 'Force Water'" }
+    { "key": "commandId", "value": "", "type": "string", "description": "Auto-set by 'Force Water'" },
+    { "key": "flowerId", "value": "", "type": "string", "description": "Auto-set by 'List Flowers (Catalog)' — catalog flower ID" }
   ],
   "auth": {
     "type": "bearer",
@@ -302,6 +303,103 @@
           "request": {
             "method": "DELETE",
             "url": { "raw": "{{baseUrl}}/api/v1/user-flowers/{{userFlowerId}}/device", "host": ["{{baseUrl}}"], "path": ["api", "v1", "user-flowers", "{{userFlowerId}}", "device"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flowers (Catalog)",
+      "description": "Read-only flower species catalog endpoints. Require Auth0 JWT.",
+      "item": [
+        {
+          "name": "List Flowers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.items && body.items.length > 0) {",
+                  "    pm.collectionVariables.set('flowerId', body.items[0].id);",
+                  "    console.log('flowerId saved:', body.items[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/flowers?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "flowers"],
+              "query": [
+                { "key": "limit", "value": "20", "description": "Max items to return" },
+                { "key": "cursor", "value": "", "description": "Pagination cursor from previous response", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Flower",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/flowers/{{flowerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "flowers", "{{flowerId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Flowers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/flowers/search?q=rose",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "flowers", "search"],
+              "query": [
+                { "key": "q", "value": "rose", "description": "Search query (name, scientific name, category)" },
+                { "key": "limit", "value": "20", "description": "Max items to return", "disabled": true },
+                { "key": "cursor", "value": "", "description": "Pagination cursor from previous response", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Photo Search Flowers",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "image/jpeg" }],
+            "body": {
+              "mode": "file",
+              "file": {}
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/flowers/photo-search", "host": ["{{baseUrl}}"], "path": ["api", "v1", "flowers", "photo-search"] },
+            "description": "Upload a JPEG image of a flower. Returns an empty array (stub — TODO: integrate Plant.id API)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "description": "AI-powered plant care assistant. Requires Auth0 JWT.",
+      "item": [
+        {
+          "name": "Ask AI",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"flowerId\": \"{{flowerId}}\",\n  \"question\": \"How often should I water my rose?\",\n  \"flowerContext\": {\n    \"name\": \"Rose\",\n    \"scientificName\": \"Rosa\",\n    \"careMantra\": \"Keep me moist but not soggy!\",\n    \"wateringFrequencyDays\": 3,\n    \"wateringAmountMl\": 250,\n    \"wateringNotes\": \"Water at the base, avoid wetting leaves.\",\n    \"sunlight\": \"full_sun\",\n    \"idealPlacement\": \"South-facing window or outdoor garden\",\n    \"placementTips\": [\"Needs at least 6 hours of direct sunlight\"],\n    \"temperatureMinC\": 10,\n    \"temperatureMaxC\": 30,\n    \"humidity\": \"medium\",\n    \"humidityTip\": \"Average room humidity is fine.\",\n    \"soilType\": \"Well-draining loam\",\n    \"repottingFrequencyYears\": 2,\n    \"repottingTip\": \"Repot in spring before new growth starts.\",\n    \"toxicityLabel\": \"Mildly toxic\",\n    \"allergyNotes\": null,\n    \"isPetSafe\": false,\n    \"isChildSafe\": true,\n    \"scent\": \"strong\",\n    \"scentDescription\": \"Classic sweet floral fragrance.\",\n    \"happySigns\": [\"Vibrant green leaves\", \"Regular blooming\"],\n    \"sadSigns\": [\"Yellow leaves\", \"Drooping petals\"],\n    \"interestingFacts\": [\"Roses have been cultivated for over 5000 years.\"]\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/ai/ask", "host": ["{{baseUrl}}"], "path": ["api", "v1", "ai", "ask"] }
           },
           "response": []
         }

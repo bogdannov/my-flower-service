@@ -3,6 +3,7 @@ import { WateringSourceSchema } from "../enums";
 
 export const CreateWateringEventRequestSchema = z.object({
   durationSeconds: z.number().int().min(0).default(0),
+  notes: z.string().optional(),
 });
 
 export type CreateWateringEventRequest = z.infer<typeof CreateWateringEventRequestSchema>;
@@ -24,6 +25,7 @@ export const WateringEventResponseSchema = z.object({
   durationSeconds: z.number().int().min(0),
   moistureBeforePercent: z.number().min(0).max(100).nullable(),
   deviceId: z.string().nullable(),
+  notes: z.string().nullable(),
 });
 
 export type WateringEventResponse = z.infer<typeof WateringEventResponseSchema>;

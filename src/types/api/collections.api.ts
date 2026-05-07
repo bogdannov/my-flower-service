@@ -5,10 +5,12 @@ import { UserFlowerResponseSchema } from "./user-flowers.api";
 
 export const CreateCollectionRequestSchema = z.object({
   name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
 });
 
 export const UpdateCollectionRequestSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
 });
 
 // ── Responses ──
@@ -16,6 +18,7 @@ export const UpdateCollectionRequestSchema = z.object({
 export const CollectionResponseSchema = z.object({
   collectionId: z.string(),
   name: z.string(),
+  description: z.string().nullable(),
   userFlowerIds: z.array(z.string()),
   isDefault: z.boolean(),
   createdAt: z.string(),

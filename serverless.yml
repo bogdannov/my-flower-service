@@ -11,6 +11,25 @@ provider:
   region: eu-central-1
   stage: ${opt:stage, 'dev'}
   httpApi:
+    cors:
+      allowedOrigins:
+        - capacitor://localhost      # iOS production build (npm run ios:run)
+        - http://localhost:9200      # Quasar dev:ios (common ports)
+        - http://localhost:9300
+        - http://localhost:9400
+        - http://localhost:9500
+        - http://localhost:9600
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - OPTIONS
+      maxAge: 86400
     authorizers:
       auth0Authorizer:
         type: jwt
@@ -25,6 +44,8 @@ provider:
     WATERING_EVENTS_TABLE: ${self:service}-watering-events-${self:provider.stage}
     SENSOR_READINGS_TABLE: ${self:service}-sensor-readings-${self:provider.stage}
     DEVICES_TABLE: ${self:service}-devices-${self:provider.stage}
+    FLOWERS_TABLE: ${self:service}-flowers-${self:provider.stage}
+    ANTHROPIC_API_KEY: ${ssm:/my-flowers-service/${self:provider.stage}/anthropic-api-key, 'placeholder-key'}
     AUTH0_DOMAIN: ${ssm:/my-flowers-service/${self:provider.stage}/auth0-domain, 'placeholder.auth0.com'}
     AUTH0_AUDIENCE: ${ssm:/my-flowers-service/${self:provider.stage}/auth0-audience, 'placeholder-audience'}
 
@@ -80,6 +101,54 @@ functions:
       - httpApi:
           path: /api/v1/user-flowers/{userFlowerId}
           method: DELETE
+          authorizer:
+            name: auth0Authorizer
+
+  # ── Flowers (catalog) ──
+  # searchFlowers must be defined before getFlower to avoid routing conflict with {id}
+  searchFlowers:
+    handler: src/handler/flowers.searchFlowers
+    events:
+      - httpApi:
+          path: /api/v1/flowers/search
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  photoSearchFlowers:
+    handler: src/handler/flowers.photoSearchFlowers
+    events:
+      - httpApi:
+          path: /api/v1/flowers/photo-search
+          method: POST
+          authorizer:
+            name: auth0Authorizer
+
+  listFlowers:
+    handler: src/handler/flowers.listFlowers
+    events:
+      - httpApi:
+          path: /api/v1/flowers
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  getFlower:
+    handler: src/handler/flowers.getFlower
+    events:
+      - httpApi:
+          path: /api/v1/flowers/{id}
+          method: GET
+          authorizer:
+            name: auth0Authorizer
+
+  # ── AI ──
+  askAI:
+    handler: src/handler/ai.askAI
+    events:
+      - httpApi:
+          path: /api/v1/ai/ask
+          method: POST
           authorizer:
             name: auth0Authorizer
 
@@ -305,8 +374,18 @@ resources:
         KeySchema:
           - { AttributeName: PK, KeyType: HASH }
 
+    FlowersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.FLOWERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: PK, AttributeType: S }
+        KeySchema:
+          - { AttributeName: PK, KeyType: HASH }
+
 custom:
   localstack:
-    stages: [local]
+    stages: [dev]
     autostart: true
     compose_file: ./docker-compose.yml

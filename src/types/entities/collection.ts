@@ -4,6 +4,7 @@ export const CollectionSchema = z.object({
   userId: z.string(),
   collectionId: z.string(),
   name: z.string().min(1).max(100),
+  description: z.string().max(500).nullable().default(null),
   userFlowerIds: z.array(z.string()),
   isDefault: z.boolean(),
   createdAt: z.string().datetime(),

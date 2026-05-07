@@ -27,6 +27,7 @@ export class CollectionsService {
       userId,
       collectionId: `col_${ulid()}`,
       name: request.name,
+      description: request.description ?? null,
       userFlowerIds: [],
       isDefault: false,
       createdAt: now,
@@ -71,6 +72,7 @@ export class CollectionsService {
 
     const fields: Partial<Collection> = {};
     if (request.name !== undefined) fields.name = request.name;
+    if (request.description !== undefined) fields.description = request.description;
 
     const updated = await this.collectionsRepository.update(userId, collectionId, fields);
     return this.toResponse(updated);
@@ -124,6 +126,7 @@ export class CollectionsService {
       userId,
       collectionId: `col_${ulid()}`,
       name: "My Collection",
+      description: null,
       userFlowerIds: [],
       isDefault: true,
       createdAt: now,
@@ -136,6 +139,7 @@ export class CollectionsService {
     return {
       collectionId: collection.collectionId,
       name: collection.name,
+      description: collection.description,
       userFlowerIds: collection.userFlowerIds,
       isDefault: collection.isDefault,
       createdAt: collection.createdAt,

@@ -33,6 +33,7 @@ export class WateringService {
       durationSeconds: request.durationSeconds,
       moistureBeforePercent: null,
       deviceId: null,
+      notes: request.notes ?? null,
     };
 
     await this.repository.create(event);
@@ -56,6 +57,7 @@ export class WateringService {
       durationSeconds: request.durationSeconds,
       moistureBeforePercent: request.moistureBeforePercent,
       deviceId,
+      notes: null,
     };
 
     await this.repository.create(event);
@@ -99,6 +101,7 @@ export class WateringService {
       durationSeconds: event.durationSeconds,
       moistureBeforePercent: event.moistureBeforePercent,
       deviceId: event.deviceId,
+      notes: event.notes,
     };
   }
 }

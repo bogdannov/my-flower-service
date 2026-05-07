@@ -53,6 +53,8 @@ export const DeviceStatusResponseSchema = z.object({
   status: DeviceStatusSchema,
   pairedAt: z.string().datetime().nullable(),
   lastSeenAt: z.string().datetime().nullable(),
+  firmwareVersion: z.string().nullable(),
+  moisturePercent: z.number().nullable(),
 });
 
 export type DeviceStatusResponse = z.infer<typeof DeviceStatusResponseSchema>;

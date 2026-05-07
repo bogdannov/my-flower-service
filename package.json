@@ -1,6 +1,6 @@
 {
   "name": "@bogdannov/my-flowers-types",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Shared TypeScript types for my-flowers-service",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -38,6 +38,7 @@
     "test:integration": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.0",
     "@aws-sdk/client-dynamodb": "^3.777.0",
     "@aws-sdk/client-sqs": "^3.777.0",
     "@aws-sdk/lib-dynamodb": "^3.1038.0",
