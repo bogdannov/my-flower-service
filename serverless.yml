@@ -47,6 +47,25 @@ provider:
     ANTHROPIC_API_KEY: ${ssm:/my-flowers-service/${self:provider.stage}/anthropic-api-key, 'placeholder-key'}
     AUTH0_DOMAIN: ${ssm:/my-flowers-service/${self:provider.stage}/auth0-domain, 'placeholder.auth0.com'}
     AUTH0_AUDIENCE: ${ssm:/my-flowers-service/${self:provider.stage}/auth0-audience, 'placeholder-audience'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:BatchGetItem
+          Resource:
+            - !GetAtt CollectionsTable.Arn
+            - !GetAtt UserFlowersTable.Arn
+            - !Sub "${UserFlowersTable.Arn}/index/*"
+            - !GetAtt WateringEventsTable.Arn
+            - !GetAtt SensorReadingsTable.Arn
+            - !GetAtt DevicesTable.Arn
+            - !GetAtt FlowersTable.Arn
 
 functions:
   # ── Health ──
