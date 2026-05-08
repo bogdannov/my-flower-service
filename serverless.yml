@@ -13,7 +13,6 @@ provider:
   httpApi:
     cors:
       allowedOrigins:
-        - capacitor://localhost      # iOS production build (npm run ios:run)
         - http://localhost:9200      # Quasar dev:ios (common ports)
         - http://localhost:9300
         - http://localhost:9400
