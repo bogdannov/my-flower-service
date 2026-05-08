@@ -58,6 +58,7 @@ provider:
             - dynamodb:DeleteItem
             - dynamodb:Query
             - dynamodb:BatchGetItem
+            - dynamodb:Scan
           Resource:
             - !GetAtt CollectionsTable.Arn
             - !GetAtt UserFlowersTable.Arn
